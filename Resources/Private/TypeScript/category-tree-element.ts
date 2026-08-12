@@ -52,7 +52,8 @@ const TABLE: string = 'sys_category';
 * The tree payload carries a category type instead of the page tree's doktype.
 */
 interface CategoryTreeNode extends TreeNodeInterface {
-  categoryType?: number;
+  // TCA type values may be strings, so this is never narrowed to a number.
+  categoryType?: number | string;
   storagePid?: number;
 }
 
@@ -89,7 +90,7 @@ interface NodeNewOptions extends NodePositionOptions {
   command: TreeNodeCommandEnum.NEW,
   title: string,
   position: TreeNodePositionEnum,
-  categoryType: number,
+  categoryType: number | string,
 }
 
 /**
@@ -140,8 +141,9 @@ export class EditableCategoryTree extends Tree {
         '&' + record + '[parent]=' + encodeURIComponent(parentUid) +
         '&' + record + '[title]=' + encodeURIComponent(newData.title);
       const typeField = this.settings?.typeField;
-      if (typeField && newData.categoryType) {
-        params += '&' + record + '[' + typeField + ']=' + encodeURIComponent(String(newData.categoryType));
+      const categoryType = newData.categoryType;
+      if (typeField && categoryType !== undefined && categoryType !== '') {
+        params += '&' + record + '[' + typeField + ']=' + encodeURIComponent(String(categoryType));
       }
     } else if (data.command === TreeNodeCommandEnum.EDIT) {
       params = '&data[' + TABLE + '][' + data.node.identifier + '][title]=' + encodeURIComponent(data.title);
@@ -181,7 +183,7 @@ export class EditableCategoryTree extends Tree {
         title: newName,
         position: position,
         target: target,
-        categoryType: (node as CategoryTreeNode).categoryType ?? 0,
+        categoryType: (node as CategoryTreeNode).categoryType ?? '',
       } as NodeNewOptions);
     } else {
       this.sendChangeCommand({
@@ -640,7 +642,7 @@ export class CategoryTreeToolbar extends TreeToolbar {
       suffix: '',
       tooltip: '',
       type: 'CategoryTreeItem',
-      categoryType: Number(item.nodeType) || 0,
+      categoryType: item.nodeType,
       statusInformation: [],
       labels: [],
     };
