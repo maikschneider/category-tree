@@ -79,8 +79,13 @@ class CategoryModuleController
         ]);
     }
 
+    /**
+     * The module registry stores the raw "LLL:" reference, so it still needs translating.
+     */
     private function getModuleTitle(ServerRequestInterface $request): string
     {
-        return (string)($request->getAttribute('module')?->getTitle() ?? 'Categories');
+        $title = (string)($request->getAttribute('module')?->getTitle() ?? '');
+
+        return ($GLOBALS['LANG'] ?? null)?->sL($title) ?: $title;
     }
 }
