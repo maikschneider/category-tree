@@ -22,6 +22,9 @@ return [
         'path' => '/module/web/categories',
         'iconIdentifier' => 'mimetypes-x-sys_category',
         'labels' => 'LLL:EXT:category_tree/Resources/Private/Language/locallang_mod.xlf',
+        // The parent module ("content", aliased "web") ships the page tree, and a submodule
+        // inherits it unless inheritance is switched off explicitly.
+        'inheritNavigationComponentFromMainModule' => false,
         'navigationComponent' => '@maikschneider/category-tree/category-tree-element',
         'routes' => [
             '_default' => [

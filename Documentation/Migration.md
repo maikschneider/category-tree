@@ -45,7 +45,10 @@ how to move a consumer over.
 
 1. `composer require maikschneider/category-tree`.
 2. Point the module's `navigationComponent` at
-   `@maikschneider/category-tree/category-tree-element`.
+   `@maikschneider/category-tree/category-tree-element`, and set
+   `'inheritNavigationComponentFromMainModule' => false` alongside it. A module below
+   `web`/`content` otherwise inherits the parent's page tree and the setting is ignored
+   without any error.
 3. Update the `use` statement of any `AfterCategoryTreeItemsPreparedEvent` listener to the
    new namespace. The event API is unchanged.
 4. If a listener read `doktype` off an item, read `categoryType`.
