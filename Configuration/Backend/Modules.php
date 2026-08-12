@@ -20,7 +20,7 @@ return [
         'position' => ['after' => 'web_list'],
         'access' => 'user',
         'path' => '/module/web/categories',
-        'iconIdentifier' => 'mimetypes-x-sys_category',
+        'iconIdentifier' => 'category-tree-module',
         'labels' => 'LLL:EXT:category_tree/Resources/Private/Language/locallang_mod.xlf',
         // The parent module ("content", aliased "web") ships the page tree, and a submodule
         // inherits it unless inheritance is switched off explicitly.
