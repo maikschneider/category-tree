@@ -1,0 +1,31 @@
+<html
+    xmlns:f="http://typo3.org/ns/TYPO3/CMS/Fluid/ViewHelpers"
+    data-namespace-typo3-fluid="true"
+>
+
+<f:layout name="Module"/>
+
+<f:section name="Content">
+    <f:variable name="labels">LLL:EXT:category_tree/Resources/Private/Language/locallang_mod.xlf</f:variable>
+
+    <f:if condition="{unknownCategorySelected}">
+        <f:then>
+            <div class="callout callout-warning">
+                <div class="callout-body">
+                    <h2 class="callout-title"><f:translate key="{labels}:module.unknownCategory.title"/></h2>
+                    <p class="callout-message"><f:translate key="{labels}:module.unknownCategory.message"/></p>
+                </div>
+            </div>
+        </f:then>
+        <f:else>
+            <div class="callout callout-info">
+                <div class="callout-body">
+                    <h2 class="callout-title"><f:translate key="{labels}:module.emptyState.title"/></h2>
+                    <p class="callout-message"><f:translate key="{labels}:module.emptyState.message"/></p>
+                </div>
+            </div>
+        </f:else>
+    </f:if>
+</f:section>
+
+</html>

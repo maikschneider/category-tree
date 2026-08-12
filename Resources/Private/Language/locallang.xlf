@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.0" xmlns:t3="http://typo3.org/schemas/xliff">
+	<file source-language="en" datatype="plaintext" original="messages" date="2026-08-12T00:00:00Z" product-name="category_tree">
+		<header/>
+		<body>
+			<trans-unit id="tree.allCategories">
+				<source>All categories</source>
+			</trans-unit>
+		</body>
+	</file>
+</xliff>

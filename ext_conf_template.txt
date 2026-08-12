@@ -1,0 +1,17 @@
+# cat=tree/entrypoint/010; type=string; label=Entry points: Comma-separated list of sys_category UIDs used as the roots of the tree. Leave empty to use all top-level categories (parent = 0).
+entryPoints =
+
+# cat=tree/entrypoint/020; type=boolean; label=Show root node: Render a synthetic root node above the entry points. Selecting it clears the current category selection.
+showRootNode = 1
+
+# cat=tree/entrypoint/030; type=string; label=Root node label: Label of the synthetic root node. Accepts an LLL: reference. Leave empty for "All categories".
+rootNodeLabel =
+
+# cat=tree/display/040; type=int+; label=Levels to fetch: Number of tree levels resolved per request. Deeper levels are loaded on demand.
+levelsToFetch = 2
+
+# cat=tree/display/050; type=boolean; label=Show hidden categories: Include disabled sys_category records in the tree.
+showHiddenCategories = 1
+
+# cat=module/enable/060; type=boolean; label=Enable category management module: Register the backend module "Categories" (Web > Categories). Selecting a category in the tree opens the regular TYPO3 edit form for that record.
+enableCategoryModule = 1

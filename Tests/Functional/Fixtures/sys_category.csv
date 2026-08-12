@@ -1,0 +1,10 @@
+"sys_category",,,,,,,,
+,"uid","pid","parent","sorting","title","hidden","deleted","sys_language_uid"
+,1,1,0,256,"Fruits",0,0,0
+,2,1,1,256,"Apple",0,0,0
+,3,1,1,512,"Banana",0,0,0
+,4,1,2,256,"Granny Smith",0,0,0
+,5,1,0,512,"Vegetables",0,0,0
+,6,1,5,256,"Carrot",1,0,0
+,7,1,0,768,"Removed",0,1,0
+,8,1,0,1024,"Frucht",0,0,1

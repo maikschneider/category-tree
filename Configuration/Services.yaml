@@ -1,0 +1,15 @@
+services:
+  _defaults:
+    autowire: true
+    autoconfigure: true
+    public: false
+
+  MaikSchneider\CategoryTree\:
+    resource: '../Classes/*'
+    exclude:
+      - '../Classes/Dto/*'
+      - '../Classes/Event/*'
+
+  # Public so integrations can decorate it and resolve it outside the container graph.
+  MaikSchneider\CategoryTree\Service\EntryPointResolver:
+    public: true

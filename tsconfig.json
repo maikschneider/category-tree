@@ -1,0 +1,31 @@
+{
+	"compilerOptions": {
+		"baseUrl": ".",
+		"target": "es2022",
+		"module": "esnext",
+		"moduleResolution": "node",
+		"rootDir": "Resources/Private/TypeScript",
+		"outDir": "var/tsc",
+		"strict": false,
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"experimentalDecorators": true,
+		"useDefineForClassFields": false,
+		"paths": {
+			"@typo3/*": [
+				"node_modules/typo3-typescript-sources/*"
+			]
+		},
+		"lib": [
+			"es2022",
+			"dom",
+			"dom.iterable"
+		]
+	},
+	"include": [
+		"Resources/Private/TypeScript"
+	],
+	"exclude": [
+		"node_modules"
+	]
+}

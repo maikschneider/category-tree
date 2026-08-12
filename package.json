@@ -1,0 +1,17 @@
+{
+	"name": "category-tree",
+	"private": true,
+	"description": "Build setup for the TYPO3 extension category_tree",
+	"license": "GPL-2.0-or-later",
+	"devDependencies": {
+		"esbuild": "0.25.12",
+		"lit": "^3.3.3",
+		"typescript": "^5.9.2",
+		"typo3-typescript-sources": "^13.4.20"
+	},
+	"scripts": {
+		"build": "node esbuild.config.mjs --build",
+		"tsc": "node Build/typecheck.mjs",
+		"watch": "node esbuild.config.mjs"
+	}
+}
