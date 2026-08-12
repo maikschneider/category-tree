@@ -170,11 +170,14 @@ will otherwise keep running the previous bundle.
 ddev composer sca              # php-cs-fixer, phpstan, editorconfig, xliff
 ddev composer test:unit
 ddev composer test:functional
+ddev playwright test           # acceptance tests against the real backend
 ```
 
 PHPStan runs at level 7 with an empty baseline. Functional tests use
 `typo3/testing-framework` and need database credentials that may create and drop
-databases; `.ddev/config.yaml` provides them.
+databases; `.ddev/config.yaml` provides them. The acceptance tests drive the real backend
+and need `ddev init-typo3` to have run — see
+[Tests/Playwright/README.md](Tests/Playwright/README.md).
 
 ## Documentation
 

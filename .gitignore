@@ -12,3 +12,5 @@ phpstan.xml
 config/
 .Build
 .vscode/
+Tests/Playwright/test-results/
+Tests/Playwright/playwright-report/

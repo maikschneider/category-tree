@@ -66,3 +66,36 @@ jobs:
 
       - name: Run functional tests
         run: ddev exec vendor/bin/phpunit --testsuite Functional
+
+  acceptance-tests:
+    name: Acceptance
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup DDEV
+        uses: ddev/github-action-setup-ddev@v1
+        with:
+          autostart: false
+
+      - name: Start DDEV
+        run: ddev start
+
+      - name: Install Composer dependencies
+        run: |
+          ddev composer config github-oauth.github.com ${{ secrets.GITHUB_TOKEN }}
+          ddev composer install
+
+      - name: Install TYPO3 with demo content
+        run: ddev init-typo3
+
+      - name: Run acceptance tests
+        run: ddev playwright test
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: Tests/Playwright/playwright-report
+          retention-days: 7
