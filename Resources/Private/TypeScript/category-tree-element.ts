@@ -320,6 +320,39 @@ interface Configuration {
   [keys: string]: any;
 }
 
+/**
+ * The backend gives its own tree components their box model by custom element name
+ * (see the rules for typo3-backend-component-page-browser and friends). Our elements are
+ * named differently, so without this they fall back to display:inline and collapse to a
+ * zero-height box — the tree loads its nodes and renders nothing visible.
+ *
+ * These live in the light DOM alongside the component rather than in a stylesheet, so the
+ * component stays a single self-contained module for consuming extensions to point at.
+ */
+const componentStyles: string = `
+  typo3-backend-navigation-component-category-tree {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  typo3-backend-navigation-component-category-tree-toolbar {
+    flex: 0 0 auto;
+  }
+  typo3-backend-navigation-component-category-tree-tree {
+    display: block;
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+  }
+  #typo3-categorytree,
+  #typo3-categorytree-treeContainer {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+`;
+
 @customElement('typo3-backend-navigation-component-category-tree')
 export class CategoryTreeNavigationComponent extends TreeModuleState(LitElement) {
   protected tree: EditableCategoryTree;
@@ -347,6 +380,7 @@ export class CategoryTreeNavigationComponent extends TreeModuleState(LitElement)
 
   protected override render(): TemplateResult {
     return html`
+      <style>${componentStyles}</style>
       <div id="typo3-categorytree" class="tree">
         ${until(this.renderTree(), '')}
       </div>
