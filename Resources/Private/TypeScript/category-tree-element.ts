@@ -321,14 +321,14 @@ interface Configuration {
 }
 
 /**
- * The backend gives its own tree components their box model by custom element name
- * (see the rules for typo3-backend-component-page-browser and friends). Our elements are
- * named differently, so without this they fall back to display:inline and collapse to a
- * zero-height box — the tree loads its nodes and renders nothing visible.
- *
- * These live in the light DOM alongside the component rather than in a stylesheet, so the
- * component stays a single self-contained module for consuming extensions to point at.
- */
+* The backend gives its own tree components their box model by custom element name
+* (see the rules for typo3-backend-component-page-browser and friends). Our elements are
+* named differently, so without this they fall back to display:inline and collapse to a
+* zero-height box — the tree loads its nodes and renders nothing visible.
+*
+* These live in the light DOM alongside the component rather than in a stylesheet, so the
+* component stays a single self-contained module for consuming extensions to point at.
+*/
 const componentStyles: string = `
   typo3-backend-navigation-component-category-tree {
     display: flex;
