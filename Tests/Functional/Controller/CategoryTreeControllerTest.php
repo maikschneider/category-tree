@@ -249,6 +249,30 @@ final class CategoryTreeControllerTest extends FunctionalTestCase
         self::assertNotSame([], $configuration['categoryTypes']);
     }
 
+    #[Test]
+    public function configurationKeepsNonNumericTypeValuesIntact(): void
+    {
+        $GLOBALS['TCA']['sys_category']['ctrl']['type'] = 'record_type';
+        $GLOBALS['TCA']['sys_category']['columns']['record_type']['config'] = [
+            'type' => 'select',
+            'renderType' => 'selectSingle',
+            'items' => [
+                ['label' => 'Default', 'value' => '0'],
+                ['label' => 'Department', 'value' => 'department'],
+            ],
+        ];
+
+        $configuration = json_decode(
+            (string)$this->createSubject()->fetchConfigurationAction()->getBody(),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+
+        self::assertSame('record_type', $configuration['typeField']);
+        self::assertSame(['0', 'department'], array_column($configuration['categoryTypes'], 'nodeType'));
+    }
+
     /**
      * @param array<int, array<string, mixed>> $items
      * @return array<string, mixed>

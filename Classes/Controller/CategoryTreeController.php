@@ -160,7 +160,7 @@ class CategoryTreeController
             'loaded' => true,
             'editable' => false,
             'deletable' => false,
-            'categoryType' => 0,
+            'categoryType' => '',
             'nameSourceField' => 'title',
             'storagePid' => 0,
             'sorting' => 0,
@@ -217,7 +217,7 @@ class CategoryTreeController
             'deletable' => $this->userCanModifyCategories(),
             'hasChildren' => $hasChildren,
             'loaded' => $childrenIncluded || !$hasChildren,
-            'categoryType' => $typeField !== '' ? (int)($category[$typeField] ?? 0) : 0,
+            'categoryType' => $typeField !== '' ? (string)($category[$typeField] ?? '') : '',
             'nameSourceField' => 'title',
             'storagePid' => (int)($category['pid'] ?? 0),
             'sorting' => (int)($category['sorting'] ?? 0),
@@ -263,7 +263,7 @@ class CategoryTreeController
                     statusInformation: (array)($item['statusInformation'] ?? []),
                     labels: (array)($item['labels'] ?? []),
                 ),
-                categoryType: (int)($item['categoryType'] ?? 0),
+                categoryType: (string)($item['categoryType'] ?? ''),
                 nameSourceField: (string)($item['nameSourceField'] ?? 'title'),
                 storagePid: (int)($item['storagePid'] ?? 0),
                 sorting: (int)($item['sorting'] ?? 0),
@@ -284,7 +284,7 @@ class CategoryTreeController
      * Draggable "create new category" entries for the toolbar — one per TCA type,
      * or a single generic one when sys_category has no type field.
      *
-     * @return array<int, array{nodeType: int|string, icon: string, title: string}>
+     * @return array<int, array{nodeType: string, icon: string, title: string}>
      */
     protected function getCategoryTypes(string $typeField): array
     {
@@ -292,7 +292,7 @@ class CategoryTreeController
 
         if ($typeField === '') {
             return [[
-                'nodeType' => 0,
+                'nodeType' => '',
                 'icon' => (string)($tca['ctrl']['iconfile'] ?? self::DEFAULT_ICON),
                 'title' => (string)($this->getLanguageService()?->sL($tca['ctrl']['title'] ?? '') ?: 'Category'),
             ]];
@@ -306,7 +306,7 @@ class CategoryTreeController
             }
             $value = $selectItem->getValue();
             $types[] = [
-                'nodeType' => $value,
+                'nodeType' => (string)$value,
                 'icon' => (string)($tca['ctrl']['typeicon_classes'][$value] ?? self::DEFAULT_ICON),
                 'title' => (string)($this->getLanguageService()?->sL($selectItem->getLabel()) ?: (string)$value),
             ];

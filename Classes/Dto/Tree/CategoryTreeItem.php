@@ -17,7 +17,7 @@ final readonly class CategoryTreeItem implements \JsonSerializable
 {
     public function __construct(
         public TreeItem $item,
-        public int $categoryType,
+        public string $categoryType,
         public string $nameSourceField,
         public int $storagePid,
         public int $sorting,
