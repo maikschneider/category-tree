@@ -7,6 +7,9 @@ return [
         'core',
         'backend',
     ],
+    'tags' => [
+        'backend.navigation-component',
+    ],
     'imports' => [
         '@maikschneider/category-tree/' => 'EXT:category_tree/Resources/Public/JavaScript/',
     ],
