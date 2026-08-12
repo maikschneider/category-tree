@@ -61,6 +61,21 @@ test.describe('Category tree navigation', () => {
     await expect(nodeLabel(page, CATEGORY.grannySmith)).toHaveText('Granny Smith');
   });
 
+  test('opens the record context menu on right click', async ({ page }) => {
+    // Regression guard: the tree is rendered from a promise, so a component that binds
+    // it on first update never gets one and the context menu silently does nothing.
+    await node(page, CATEGORY.fruits).click({ button: 'right' });
+
+    await expect(page.locator('.context-menu .context-menu-item').first()).toBeVisible();
+    await expect(page.locator('.context-menu')).toContainText('Edit');
+  });
+
+  test('keeps the context menu closed for the synthetic root node', async ({ page }) => {
+    await node(page, CATEGORY.root).click({ button: 'right' });
+
+    await expect(page.locator('.context-menu')).toHaveCount(0);
+  });
+
   test('filters the tree and keeps the ancestors of a match', async ({ page }) => {
     await searchTree(page, 'granny');
 

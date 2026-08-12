@@ -9,7 +9,7 @@
 * LICENSE.md file that was distributed with this source code.
 */
 
-import { html, LitElement, type PropertyValues, type TemplateResult } from 'lit';
+import { html, LitElement, type TemplateResult } from 'lit';
 import { customElement } from 'lit/decorators.js';
 import { until } from 'lit/directives/until.js';
 import { lll } from '@typo3/core/lit-helper.js';
@@ -357,7 +357,7 @@ const componentStyles: string = `
 
 @customElement('typo3-backend-navigation-component-category-tree')
 export class CategoryTreeNavigationComponent extends TreeModuleState(LitElement) {
-  protected tree: EditableCategoryTree;
+  protected tree: EditableCategoryTree | null = null;
 
   protected override moduleStateType: string = moduleStateType;
 
@@ -387,11 +387,6 @@ export class CategoryTreeNavigationComponent extends TreeModuleState(LitElement)
         ${until(this.renderTree(), '')}
       </div>
     `;
-  }
-
-  protected override firstUpdated(changedProperties: PropertyValues): void {
-    super.firstUpdated(changedProperties);
-    this.connectToolbar();
   }
 
   protected async renderTree(): Promise<TemplateResult> {
@@ -428,24 +423,28 @@ export class CategoryTreeNavigationComponent extends TreeModuleState(LitElement)
   }
 
   /**
-  * The toolbar and the tree are siblings in the light DOM, so they are wired up
-  * after the first render instead of via a template binding.
+  * The tree is rendered from a promise, so it does not exist yet when this component
+  * first updates. Every consumer looks it up on demand instead of relying on a binding
+  * that would have to be made before the element is in the DOM.
   */
-  private connectToolbar(): void {
-    const treeElement = this.querySelector('#typo3-categorytree-tree') as EditableCategoryTree;
-    const toolbarElement = this.querySelector('#typo3-categorytree-toolbar') as CategoryTreeToolbar;
-    if (treeElement && toolbarElement) {
-      this.tree = treeElement;
-      toolbarElement.tree = treeElement;
+  protected resolveTree(): EditableCategoryTree | null {
+    if (!this.tree) {
+      this.tree = this.querySelector('#typo3-categorytree-tree');
+      const toolbarElement = this.querySelector<CategoryTreeToolbar>('#typo3-categorytree-toolbar');
+      if (this.tree && toolbarElement) {
+        toolbarElement.tree = this.tree;
+      }
     }
+
+    return this.tree;
   }
 
   private readonly refresh = (): void => {
-    this.tree?.refreshOrFilterTree();
+    this.resolveTree()?.refreshOrFilterTree();
   };
 
   private readonly selectFirstNode = (): void => {
-    this.tree?.selectFirstNode();
+    this.resolveTree()?.selectFirstNode();
   };
 
   /**
@@ -493,7 +492,8 @@ export class CategoryTreeNavigationComponent extends TreeModuleState(LitElement)
 
   private readonly showContextMenu = (evt: CustomEvent): void => {
     const node = evt.detail.node as TreeNodeInterface;
-    if (!node || node.identifier === '0' || !this.tree) {
+    const tree = this.resolveTree();
+    if (!node || node.identifier === '0' || !tree) {
       return;
     }
 
@@ -503,7 +503,7 @@ export class CategoryTreeNavigationComponent extends TreeModuleState(LitElement)
       'tree',
       '',
       '',
-      this.tree.getElementFromNode(node),
+      tree.getElementFromNode(node),
       evt.detail.originalEvent as PointerEvent
     );
   };
