@@ -8,6 +8,9 @@ reloads the module with a `category=<uid>` query parameter; what the module does
 is entirely up to the module. The tree itself handles creating, renaming, moving, copying,
 deleting and searching `sys_category` records.
 
+![The category tree next to the Categories module, with a selected category open in the
+regular TYPO3 record form](Documentation/Images/category-tree.png)
+
 | | |
 |---|---|
 | **TYPO3** | 13.4 LTS, 14.3 LTS |
@@ -178,10 +181,7 @@ databases; `.ddev/config.yaml` provides them.
 - [Entry points](Documentation/EntryPoints.md) — where the tree starts, and how to resolve
   it dynamically
 - [Events](Documentation/Events.md) — decorating tree nodes
-- [Migration](Documentation/Migration.md) — moving over from the
-  `xima_typo3_recordlist` prototype
 
 ## Credits
 
-Extracted from a prototype built inside `xima/xima-typo3-recordlist`, and modelled on
-TYPO3's own page tree.
+Modelled on TYPO3's own page tree.

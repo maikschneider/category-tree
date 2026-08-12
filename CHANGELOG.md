@@ -16,11 +16,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Optional **Web > Categories** backend module that hands the selected category to the
   regular TYPO3 record form. Can be switched off in the extension configuration.
 - `AfterCategoryTreeItemsPreparedEvent` for decorating tree nodes.
-- `ajax_category_tree_rootline` endpoint, so revealing a selected node no longer borrows
-  the page tree's endpoint.
-
-### Notes
-
-Extracted from the `category-tree` branch of `xima/xima-typo3-recordlist`. See
-[Documentation/Migration.md](Documentation/Migration.md) for the rename table and the
-behavioural differences against that prototype.
+- `ajax_category_tree_rootline` endpoint for revealing a node selected elsewhere.
