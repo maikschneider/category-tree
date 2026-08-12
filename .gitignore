@@ -11,3 +11,4 @@ php-cs-fixer.xml
 phpstan.xml
 config/
 .Build
+.vscode/
