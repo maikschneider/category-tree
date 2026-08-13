@@ -9,7 +9,8 @@ bin/
 .php-cs-fixer.cache
 php-cs-fixer.xml
 phpstan.xml
-config/
+config/sites/
+config/system/settings.php
 .Build
 .vscode/
 Tests/Playwright/test-results/
