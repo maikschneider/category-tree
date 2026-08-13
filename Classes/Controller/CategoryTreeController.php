@@ -61,6 +61,7 @@ class CategoryTreeController
             'dataUrl' => (string)$this->uriBuilder->buildUriFromRoute('ajax_category_tree_data'),
             'filterUrl' => (string)$this->uriBuilder->buildUriFromRoute('ajax_category_tree_filter'),
             'rootlineUrl' => (string)$this->uriBuilder->buildUriFromRoute('ajax_category_tree_rootline'),
+            'descendantsUrl' => (string)$this->uriBuilder->buildUriFromRoute('ajax_category_tree_descendants'),
         ]);
     }
 
@@ -120,6 +121,26 @@ class CategoryTreeController
         $items = $this->flattenAll($matched, 0, PHP_INT_MAX, '');
 
         return new JsonResponse($this->prepareItems($request, $items));
+    }
+
+    /**
+     * UIDs below a category, deepest first. The tree deletes a branch record by record,
+     * because DataHandler only cascades a delete for pages.
+     */
+    public function fetchDescendantsAction(ServerRequestInterface $request): ResponseInterface
+    {
+        $identifier = $request->getQueryParams()['identifier'] ?? null;
+        if ($identifier === null || !MathUtility::canBeInterpretedAsInteger($identifier)) {
+            return new JsonResponse(['descendants' => []]);
+        }
+
+        return new JsonResponse([
+            // Hidden descendants count too: leaving them behind would orphan records the
+            // tree cannot show, let alone delete.
+            'descendants' => array_map(strval(...), $this->categoryTreeRepository->findDescendantUids(
+                (int)$identifier
+            )),
+        ]);
     }
 
     /**

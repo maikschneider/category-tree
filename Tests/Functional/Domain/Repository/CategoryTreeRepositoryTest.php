@@ -34,6 +34,25 @@ final class CategoryTreeRepositoryTest extends FunctionalTestCase
     }
 
     #[Test]
+    public function findDescendantUidsReturnsTheWholeBranchDeepestFirst(): void
+    {
+        self::assertSame([4, 3, 2], $this->subject->findDescendantUids(1));
+    }
+
+    #[Test]
+    public function findDescendantUidsIncludesHiddenCategories(): void
+    {
+        // Carrot is hidden; leaving it out would orphan it when its parent is deleted.
+        self::assertSame([6], $this->subject->findDescendantUids(5));
+    }
+
+    #[Test]
+    public function findDescendantUidsIsEmptyForALeaf(): void
+    {
+        self::assertSame([], $this->subject->findDescendantUids(4));
+    }
+
+    #[Test]
     public function findTreeExcludesDeletedAndTranslatedRecords(): void
     {
         $titles = array_column($this->subject->findTree(), 'title');

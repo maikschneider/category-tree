@@ -20,6 +20,10 @@ return [
         'path' => '/category-tree/filter',
         'target' => CategoryTreeController::class . '::filterDataAction',
     ],
+    'category_tree_descendants' => [
+        'path' => '/category-tree/descendants',
+        'target' => CategoryTreeController::class . '::fetchDescendantsAction',
+    ],
     'category_tree_rootline' => [
         'path' => '/category-tree/rootline',
         'target' => CategoryTreeController::class . '::fetchRootlineAction',

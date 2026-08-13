@@ -91,6 +91,35 @@ class CategoryTreeRepository
     }
 
     /**
+     * UIDs of every category below the given one, deepest first, so a caller may delete
+     * them in order without ever orphaning a record.
+     *
+     * @return int[]
+     */
+    public function findDescendantUids(int $categoryUid, bool $includeHidden = true): array
+    {
+        $childrenByParent = [];
+        foreach ($this->loadCategories($includeHidden) as $uid => $category) {
+            $childrenByParent[(int)$category['parent']][] = $uid;
+        }
+
+        $descendants = [];
+        $queue = $childrenByParent[$categoryUid] ?? [];
+        // Breadth first, so reversing the result yields the deepest level first. A cyclic
+        // parent reference in broken data would otherwise loop forever.
+        while ($queue !== []) {
+            $uid = array_shift($queue);
+            if (isset($descendants[$uid]) || $uid === $categoryUid) {
+                continue;
+            }
+            $descendants[$uid] = true;
+            $queue = array_merge($queue, $childrenByParent[$uid] ?? []);
+        }
+
+        return array_reverse(array_keys($descendants));
+    }
+
+    /**
      * @return array<string, mixed>|null
      */
     public function findByUid(int $categoryUid, bool $includeHidden = true): ?array

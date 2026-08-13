@@ -233,6 +233,28 @@ final class CategoryTreeControllerTest extends FunctionalTestCase
     }
 
     #[Test]
+    public function descendantsReturnTheBranchBelowACategory(): void
+    {
+        $response = $this->createSubject()->fetchDescendantsAction($this->request(['identifier' => '1']));
+
+        self::assertSame(
+            ['descendants' => ['4', '3', '2']],
+            json_decode((string)$response->getBody(), true, 512, JSON_THROW_ON_ERROR)
+        );
+    }
+
+    #[Test]
+    public function descendantsAreEmptyForANonNumericIdentifier(): void
+    {
+        $response = $this->createSubject()->fetchDescendantsAction($this->request(['identifier' => 'nope']));
+
+        self::assertSame(
+            ['descendants' => []],
+            json_decode((string)$response->getBody(), true, 512, JSON_THROW_ON_ERROR)
+        );
+    }
+
+    #[Test]
     public function configurationExposesTheAjaxEndpointsAndWritePermission(): void
     {
         $configuration = json_decode(

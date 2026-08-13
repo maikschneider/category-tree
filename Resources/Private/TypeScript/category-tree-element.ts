@@ -79,6 +79,7 @@ interface NodePositionOptions extends NodeChangeCommandDataInterface {
 
 interface NodeDeleteOptions extends NodeChangeCommandDataInterface {
   command: TreeNodeCommandEnum.DELETE,
+  descendants: string[],
 }
 
 interface NodeEditOptions extends NodeChangeCommandDataInterface {
@@ -156,7 +157,11 @@ export class EditableCategoryTree extends Tree {
       if (data.node.identifier === ModuleStateStorage.current(moduleStateType).identifier) {
         this.selectFirstNode();
       }
-      params = '&cmd[' + TABLE + '][' + data.node.identifier + '][delete]=1';
+      // DataHandler only cascades a delete for pages, so the branch is deleted record by
+      // record, deepest first, and the category itself last.
+      params = [...(data as NodeDeleteOptions).descendants, data.node.identifier]
+        .map((identifier: string): string => '&cmd[' + TABLE + '][' + identifier + '][delete]=1')
+        .join('');
     } else {
       // Moving and copying are two operations for a parent-based tree: the DataHandler
       // command places the record on a storage page and gives it a sorting value, and the
@@ -225,19 +230,26 @@ export class EditableCategoryTree extends Tree {
   }
 
   protected override handleNodeDelete(node: TreeNodeInterface): void {
-    const options: NodeDeleteOptions = {
-      node: node,
-      command: TreeNodeCommandEnum.DELETE,
+    const deleteBranch = (): void => {
+      this.fetchDescendants(node.identifier)
+        .then((descendants: string[]): void => {
+          this.sendChangeCommand({
+            node: node,
+            command: TreeNodeCommandEnum.DELETE,
+            descendants: descendants,
+          } as NodeDeleteOptions);
+        })
+        .catch((error): void => this.errorNotification(error));
     };
 
     if (!this.settings.displayDeleteConfirmation) {
-      this.sendChangeCommand(options);
+      deleteBranch();
       return;
     }
 
     const modal = Modal.confirm(
       TYPO3.lang['mess.delete.title'],
-      TYPO3.lang['mess.delete'].replace('%s', options.node.name),
+      TYPO3.lang['mess.delete'].replace('%s', node.name),
       Severity.warning,
       [
         {
@@ -255,10 +267,25 @@ export class EditableCategoryTree extends Tree {
     );
     modal.addEventListener('button.clicked', (e: Event): void => {
       if ((e.target as HTMLInputElement).name === 'delete') {
-        this.sendChangeCommand(options);
+        deleteBranch();
       }
       modal.hideModal();
     });
+  }
+
+  /**
+  * The categories below a node, deepest first. Children are only known to the client once
+  * they have been expanded, so the server is asked for the whole branch.
+  */
+  private async fetchDescendants(identifier: string): Promise<string[]> {
+    const url = this.settings?.descendantsUrl;
+    if (!url || identifier.startsWith('NEW')) {
+      return [];
+    }
+
+    const response = await (new AjaxRequest(url)).withQueryArguments({ identifier }).get();
+
+    return (await response.resolve('json')).descendants ?? [];
   }
 
   protected override handleNodeMove(node: TreeNodeInterface, target: TreeNodeInterface, position: TreeNodePositionEnum): void {
