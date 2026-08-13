@@ -258,7 +258,7 @@ final class CategoryTreeControllerTest extends FunctionalTestCase
     public function configurationExposesTheAjaxEndpointsAndWritePermission(): void
     {
         $configuration = json_decode(
-            (string)$this->createSubject()->fetchConfigurationAction()->getBody(),
+            (string)$this->createSubject()->fetchConfigurationAction($this->request())->getBody(),
             true,
             512,
             JSON_THROW_ON_ERROR
@@ -285,7 +285,7 @@ final class CategoryTreeControllerTest extends FunctionalTestCase
         ];
 
         $configuration = json_decode(
-            (string)$this->createSubject()->fetchConfigurationAction()->getBody(),
+            (string)$this->createSubject()->fetchConfigurationAction($this->request())->getBody(),
             true,
             512,
             JSON_THROW_ON_ERROR

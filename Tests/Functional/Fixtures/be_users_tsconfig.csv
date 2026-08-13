@@ -1,0 +1,7 @@
+"be_users",,,,,
+,"uid","pid","username","admin","TSconfig"
+,2,0,"tsconfig",1,"mod.category_tree.categoryTree {
+  levelsToFetch = 5
+  rootNodeLabel = From TSconfig
+  entryPoints = 5
+}"

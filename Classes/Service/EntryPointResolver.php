@@ -4,21 +4,21 @@ declare(strict_types=1);
 
 namespace MaikSchneider\CategoryTree\Service;
 
-use MaikSchneider\CategoryTree\Configuration\CategoryTreeConfiguration;
+use MaikSchneider\CategoryTree\Configuration\CategoryTreeSettings;
 use MaikSchneider\CategoryTree\Domain\Repository\CategoryTreeRepository;
 
 /**
  * Resolves the category UIDs the tree starts from.
  *
- * The extension configuration is the shipped source. This class is a plain DI service,
- * so an integration can replace it with a decorator (Services.yaml) to derive entry points
- * from anything else — TSconfig, the active module, a site setting — without touching the
- * controller. See Documentation/EntryPoints.md.
+ * The resolved settings of the request are the shipped source, so entry points follow the
+ * extension configuration, the module registry and TSconfig. This class is a plain DI
+ * service, so an integration can replace it with a decorator (Services.yaml) to derive
+ * entry points from anything else without touching the controller — the settings carry the
+ * module identifier for that. See Documentation/EntryPoints.md.
  */
 class EntryPointResolver
 {
     public function __construct(
-        private readonly CategoryTreeConfiguration $configuration,
         private readonly CategoryTreeRepository $repository,
     ) {
     }
@@ -29,18 +29,15 @@ class EntryPointResolver
      *
      * @return int[]
      */
-    public function resolve(): array
+    public function resolve(CategoryTreeSettings $settings): array
     {
-        $configured = $this->configuration->getEntryPoints();
-        if ($configured === []) {
+        if ($settings->entryPoints === []) {
             return [];
         }
 
-        $includeHidden = $this->configuration->shouldShowHiddenCategories();
-
         return array_values(array_filter(
-            $configured,
-            fn (int $uid): bool => $this->repository->findByUid($uid, $includeHidden) !== null
+            $settings->entryPoints,
+            fn (int $uid): bool => $this->repository->findByUid($uid, $settings->showHiddenCategories) !== null
         ));
     }
 }

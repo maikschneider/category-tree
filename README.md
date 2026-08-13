@@ -118,6 +118,10 @@ All settings live in the extension configuration
 
 Entry points that do not exist are silently skipped, so a stale UID cannot empty the tree.
 
+Settings are resolved per module, so two modules can render the tree with different entry
+points, depth or root node — see
+[Documentation/ModuleSettings.md](Documentation/ModuleSettings.md).
+
 See [Documentation/EntryPoints.md](Documentation/EntryPoints.md) for resolving entry
 points dynamically, and [Documentation/Events.md](Documentation/Events.md) for decorating
 tree nodes with badges and labels.
@@ -181,6 +185,8 @@ and need `ddev init-typo3` to have run — see
 
 ## Documentation
 
+- [Per-module settings](Documentation/ModuleSettings.md) — giving a module its own entry
+  points, root node, depth or hidden-category handling
 - [Entry points](Documentation/EntryPoints.md) — where the tree starts, and how to resolve
   it dynamically
 - [Events](Documentation/Events.md) — decorating tree nodes

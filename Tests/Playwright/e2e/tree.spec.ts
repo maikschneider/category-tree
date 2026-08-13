@@ -7,6 +7,7 @@ import {
   nodeLabel,
   openCategoryModule,
   resetCategories,
+  setUserTsConfig,
   searchTree,
   tree,
   visibleNodeNames,
@@ -74,6 +75,24 @@ test.describe('Category tree navigation', () => {
     await node(page, CATEGORY.root).click({ button: 'right' });
 
     await expect(page.locator('.context-menu')).toHaveCount(0);
+  });
+
+  test.describe('per-module settings', () => {
+    test.afterEach(() => {
+      setUserTsConfig('');
+    });
+
+    test('applies the settings of the module the tree is rendered in', async ({ page }) => {
+      setUserTsConfig(`mod.category_tree.categoryTree {
+        showRootNode = 0
+        entryPoints = 5
+      }`);
+      await openCategoryModule(page, { expectRootNode: false });
+
+      await expect(node(page, CATEGORY.root)).toHaveCount(0);
+      await expect(nodeLabel(page, CATEGORY.vegetables)).toHaveText('Vegetables');
+      await expect(node(page, CATEGORY.fruits)).toHaveCount(0);
+    });
   });
 
   test('filters the tree and keeps the ancestors of a match', async ({ page }) => {

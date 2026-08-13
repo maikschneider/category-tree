@@ -6,7 +6,8 @@ top-level category (`parent = 0`).
 ## Configuring it
 
 Set `entryPoints` in the extension configuration to a comma-separated list of
-`sys_category` UIDs:
+`sys_category` UIDs. A single module can override this for itself, see
+[ModuleSettings.md](ModuleSettings.md):
 
 ```
 entryPoints = 12,48
@@ -22,9 +23,11 @@ URL — the module's cue that no category is selected.
 ## Resolving entry points dynamically
 
 `MaikSchneider\CategoryTree\Service\EntryPointResolver` is an ordinary DI service and the
-single place entry points are decided. Decorate it when the static setting is not enough —
-for example to derive the entry point from the active module, the backend user's group, or
-a site setting.
+single place entry points are decided. It receives the settings resolved for the request,
+which carry the entry points of the three configuration layers and the module they were
+resolved for. Decorate it when static configuration is not enough — for example to derive
+the entry point from the backend user's group, a site setting, or the state of another
+record.
 
 `Configuration/Services.yaml` in your own extension:
 
@@ -41,25 +44,26 @@ services:
 
 namespace MyVendor\MyExt\CategoryTree;
 
+use MaikSchneider\CategoryTree\Configuration\CategoryTreeSettings;
 use MaikSchneider\CategoryTree\Service\EntryPointResolver;
-use TYPO3\CMS\Core\Http\ServerRequest;
 
-final class ModuleAwareEntryPointResolver extends EntryPointResolver
+final class GroupAwareEntryPointResolver extends EntryPointResolver
 {
     public function __construct(private readonly EntryPointResolver $inner) {}
 
-    public function resolve(): array
+    public function resolve(CategoryTreeSettings $settings): array
     {
-        $module = $GLOBALS['TYPO3_REQUEST']?->getAttribute('module')?->getIdentifier();
+        if ($settings->module === 'myext_products' && !$GLOBALS['BE_USER']->isAdmin()) {
+            return [12];
+        }
 
-        return match ($module) {
-            'myext_products' => [12],
-            'myext_downloads' => [48],
-            default => $this->inner->resolve(),
-        };
+        return $this->inner->resolve($settings);
     }
 }
 ```
+
+Static per-module entry points need no PHP at all — put them in the module registry or in
+TSconfig, see [ModuleSettings.md](ModuleSettings.md).
 
 The resolver is consulted on every data and filter request, so the tree follows whatever
 the decorator returns without any client-side state.

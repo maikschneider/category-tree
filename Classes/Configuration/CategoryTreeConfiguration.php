@@ -80,6 +80,21 @@ class CategoryTreeConfiguration implements SingletonInterface
         return (bool)$this->get('enableCategoryModule');
     }
 
+    /**
+     * Every setting with its default applied, as the base layer of a per-module merge.
+     *
+     * @return array<string, mixed>
+     */
+    public function getAll(): array
+    {
+        $values = [];
+        foreach (array_keys(self::DEFAULTS) as $key) {
+            $values[$key] = $this->get($key);
+        }
+
+        return $values;
+    }
+
     private function get(string $key): mixed
     {
         if ($this->configuration === null) {

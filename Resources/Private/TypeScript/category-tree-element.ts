@@ -460,11 +460,20 @@ export class CategoryTreeNavigationComponent extends TreeModuleState(LitElement)
       return Promise.resolve(this.configuration);
     }
 
-    return (new AjaxRequest(top.TYPO3.settings.ajaxUrls.category_tree_configuration)).get()
+    // Settings are resolved per module, and the endpoints are routes of their own with no
+    // knowledge of the module they are called from — so the module travels with this one
+    // request and comes back baked into the URLs of the others.
+    return (new AjaxRequest(top.TYPO3.settings.ajaxUrls.category_tree_configuration))
+      .withQueryArguments({ module: this.getCurrentModuleIdentifier() })
+      .get()
       .then(async (response: AjaxResponse): Promise<Configuration> => {
         this.configuration = await response.resolve('json');
         return this.configuration;
       });
+  }
+
+  private getCurrentModuleIdentifier(): string {
+    return top.TYPO3.ModuleMenu?.App?.getCurrentModule() ?? '';
   }
 
   /**

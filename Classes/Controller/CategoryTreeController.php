@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace MaikSchneider\CategoryTree\Controller;
 
-use MaikSchneider\CategoryTree\Configuration\CategoryTreeConfiguration;
+use MaikSchneider\CategoryTree\Configuration\CategoryTreeSettings;
+use MaikSchneider\CategoryTree\Configuration\ModuleSettingsResolver;
 use MaikSchneider\CategoryTree\Domain\Repository\CategoryTreeRepository;
 use MaikSchneider\CategoryTree\Dto\Tree\CategoryTreeItem;
 use MaikSchneider\CategoryTree\Event\AfterCategoryTreeItemsPreparedEvent;
@@ -39,7 +40,7 @@ class CategoryTreeController
         protected readonly UriBuilder $uriBuilder,
         protected readonly EventDispatcherInterface $eventDispatcher,
         protected readonly CategoryTreeRepository $categoryTreeRepository,
-        protected readonly CategoryTreeConfiguration $configuration,
+        protected readonly ModuleSettingsResolver $settingsResolver,
         protected readonly EntryPointResolver $entryPointResolver,
     ) {
     }
@@ -47,9 +48,13 @@ class CategoryTreeController
     /**
      * Settings consumed by the "setup" property of the tree custom element.
      */
-    public function fetchConfigurationAction(): ResponseInterface
+    public function fetchConfigurationAction(ServerRequestInterface $request): ResponseInterface
     {
         $typeField = $this->getTypeField();
+        // The tree fetches its nodes on its own, so the module travels baked into the URLs
+        // it is handed here rather than as a parameter it would have to know about.
+        $module = $this->settingsResolver->resolve($request)->module;
+        $parameters = $module === null ? [] : ['module' => $module];
 
         return new JsonResponse([
             'allowDragMove' => $this->userCanModifyCategories(),
@@ -58,10 +63,10 @@ class CategoryTreeController
             'typeField' => $typeField,
             'displayDeleteConfirmation' => $this->getBackendUser()->jsConfirmation(JsConfirmation::DELETE),
             'showIcons' => true,
-            'dataUrl' => (string)$this->uriBuilder->buildUriFromRoute('ajax_category_tree_data'),
-            'filterUrl' => (string)$this->uriBuilder->buildUriFromRoute('ajax_category_tree_filter'),
-            'rootlineUrl' => (string)$this->uriBuilder->buildUriFromRoute('ajax_category_tree_rootline'),
-            'descendantsUrl' => (string)$this->uriBuilder->buildUriFromRoute('ajax_category_tree_descendants'),
+            'dataUrl' => (string)$this->uriBuilder->buildUriFromRoute('ajax_category_tree_data', $parameters),
+            'filterUrl' => (string)$this->uriBuilder->buildUriFromRoute('ajax_category_tree_filter', $parameters),
+            'rootlineUrl' => (string)$this->uriBuilder->buildUriFromRoute('ajax_category_tree_rootline', $parameters),
+            'descendantsUrl' => (string)$this->uriBuilder->buildUriFromRoute('ajax_category_tree_descendants', $parameters),
         ]);
     }
 
@@ -71,8 +76,9 @@ class CategoryTreeController
      */
     public function fetchDataAction(ServerRequestInterface $request): ResponseInterface
     {
-        $includeHidden = $this->configuration->shouldShowHiddenCategories();
-        $levelsToFetch = $this->configuration->getLevelsToFetch();
+        $settings = $this->settingsResolver->resolve($request);
+        $includeHidden = $settings->showHiddenCategories;
+        $levelsToFetch = $settings->levelsToFetch;
         $parentIdentifier = $request->getQueryParams()['parent'] ?? null;
 
         if ($parentIdentifier !== null && MathUtility::canBeInterpretedAsInteger($parentIdentifier)) {
@@ -83,13 +89,16 @@ class CategoryTreeController
             return new JsonResponse($this->prepareItems($request, $items));
         }
 
-        $categories = $this->categoryTreeRepository->findTree($this->entryPointResolver->resolve(), $includeHidden);
-        $showRootNode = $this->configuration->isRootNodeEnabled();
+        $categories = $this->categoryTreeRepository->findTree(
+            $this->entryPointResolver->resolve($settings),
+            $includeHidden
+        );
+        $showRootNode = $settings->showRootNode;
         $startDepth = $showRootNode ? 1 : 0;
 
         $items = [];
         if ($showRootNode) {
-            $items[] = $this->createRootItem($categories !== []);
+            $items[] = $this->createRootItem($categories !== [], $settings);
         }
         // An entry point may sit anywhere in the category hierarchy, so its real parent is
         // not part of the payload — it is re-parented to the synthetic root or to nothing.
@@ -113,8 +122,11 @@ class CategoryTreeController
             return new JsonResponse([]);
         }
 
-        $includeHidden = $this->configuration->shouldShowHiddenCategories();
-        $categories = $this->categoryTreeRepository->findTree($this->entryPointResolver->resolve(), $includeHidden);
+        $settings = $this->settingsResolver->resolve($request);
+        $categories = $this->categoryTreeRepository->findTree(
+            $this->entryPointResolver->resolve($settings),
+            $settings->showHiddenCategories
+        );
         $matched = $this->categoryTreeRepository->filterTree($categories, $searchTerm);
 
         // A filtered result is always fully expanded, so no depth limit applies.
@@ -153,12 +165,10 @@ class CategoryTreeController
             return new JsonResponse(['rootline' => []]);
         }
 
-        $rootline = $this->categoryTreeRepository->findRootline(
-            (int)$identifier,
-            $this->configuration->shouldShowHiddenCategories()
-        );
+        $settings = $this->settingsResolver->resolve($request);
+        $rootline = $this->categoryTreeRepository->findRootline((int)$identifier, $settings->showHiddenCategories);
 
-        if ($this->configuration->isRootNodeEnabled()) {
+        if ($settings->showRootNode) {
             array_unshift($rootline, 0);
         }
 
@@ -168,13 +178,13 @@ class CategoryTreeController
     /**
      * @return array<string, mixed>
      */
-    protected function createRootItem(bool $hasChildren): array
+    protected function createRootItem(bool $hasChildren, CategoryTreeSettings $settings): array
     {
         return [
             'identifier' => self::ROOT_IDENTIFIER,
             'parentIdentifier' => '',
             'recordType' => CategoryTreeRepository::TABLE,
-            'name' => $this->getRootNodeLabel(),
+            'name' => $this->getRootNodeLabel($settings),
             'depth' => 0,
             'icon' => 'apps-pagetree-root',
             'hasChildren' => $hasChildren,
@@ -188,9 +198,9 @@ class CategoryTreeController
         ];
     }
 
-    protected function getRootNodeLabel(): string
+    protected function getRootNodeLabel(CategoryTreeSettings $settings): string
     {
-        $configured = $this->configuration->getRootNodeLabel();
+        $configured = $settings->rootNodeLabel;
         if ($configured !== '') {
             return $this->getLanguageService()?->sL($configured) ?: $configured;
         }

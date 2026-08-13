@@ -17,3 +17,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   regular TYPO3 record form. Can be switched off in the extension configuration.
 - `AfterCategoryTreeItemsPreparedEvent` for decorating tree nodes.
 - `ajax_category_tree_rootline` endpoint for revealing a node selected elsewhere.
+- Per-module settings: entry points, root node, depth and hidden-category handling can be
+  overridden for a single module through the module registry and User TSconfig, on top of
+  the extension configuration.

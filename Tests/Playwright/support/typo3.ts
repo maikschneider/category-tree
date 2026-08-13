@@ -72,6 +72,17 @@ export function countCategories(where: Record<string, string | number>): number 
   return Number(mysql(`SELECT COUNT(*) FROM sys_category WHERE ${condition};`));
 }
 
+/**
+* Writes User TSconfig for the backend user the tests log in as. TSconfig is cached, so
+* the caches go with it.
+*/
+export function setUserTsConfig(tsConfig: string): void {
+  mysql(
+    `UPDATE be_users SET TSconfig = '${tsConfig.replace(/'/g, "''")}' WHERE username = '${BACKEND_USER.username}';`
+  );
+  flushCaches();
+}
+
 export function flushCaches(): void {
   const tables = mysql("SHOW TABLES LIKE 'cache\\_%';").split('\n').filter(Boolean);
   if (tables.length > 0) {
@@ -98,9 +109,14 @@ export async function loginAsAdmin(page: Page): Promise<void> {
 * Opens the Categories module and waits until the tree has loaded, so specs never
 * race the AJAX request that fills it.
 */
-export async function openCategoryModule(page: Page): Promise<void> {
+export async function openCategoryModule(
+  page: Page,
+  options: { expectRootNode?: boolean } = {}
+): Promise<void> {
   await page.goto('/typo3/module/web/categories', NAVIGATION);
-  await expect(node(page, CATEGORY.root)).toBeVisible({ timeout: READY_TIMEOUT });
+  // The root node is the first thing the tree renders, unless it was configured away.
+  const rendered = options.expectRootNode === false ? tree(page).locator('.node') : node(page, CATEGORY.root);
+  await expect(rendered.first()).toBeVisible({ timeout: READY_TIMEOUT });
 }
 
 export function tree(page: Page): Locator {
