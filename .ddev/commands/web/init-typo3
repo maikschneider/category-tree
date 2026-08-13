@@ -48,10 +48,10 @@ _progress "Setting up TYPO3 installation"
 _done
 
 # Import functional CSV fixtures as demo content.
-# be_users.csv is skipped: it defines a passwordless test user that would collide
-# with the admin the setup step just created.
+# Backend user fixtures are skipped: they define test users whose UIDs collide with the
+# admin the setup step just created.
 for file in "$functionalFixturePath"/*.csv; do
-    [ "$(basename "$file")" = "be_users.csv" ] && continue
+    case "$(basename "$file")" in be_users*.csv) continue ;; esac
     _progress "Importing CSV fixture \"$(basename "$file")\""
     python3 - "$file" <<'PYEOF' | mysql $dbCredentials "$dbName"
 import csv, sys
