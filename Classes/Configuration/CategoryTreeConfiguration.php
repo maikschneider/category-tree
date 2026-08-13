@@ -22,6 +22,7 @@ class CategoryTreeConfiguration implements SingletonInterface
 
     private const DEFAULTS = [
         'entryPoints' => '',
+        'excludeCategories' => '',
         'showRootNode' => true,
         'rootNodeLabel' => '',
         'levelsToFetch' => 2,

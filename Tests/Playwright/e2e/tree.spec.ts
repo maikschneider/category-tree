@@ -107,6 +107,16 @@ test.describe('Category tree navigation', () => {
       await expect(nodeLabel(page, CATEGORY.fruits)).toHaveText('Fruits');
     });
 
+    test('leaves out excluded categories and everything below them', async ({ page }) => {
+      setUserTsConfig('mod.category_tree.categoryTree.excludeCategories = 2');
+      await openCategoryModule(page);
+      await expandNode(page, CATEGORY.fruits, CATEGORY.banana);
+
+      await expect(node(page, CATEGORY.apple)).toHaveCount(0);
+      await expect(node(page, CATEGORY.grannySmith)).toHaveCount(0);
+      await expect(nodeLabel(page, CATEGORY.banana)).toHaveText('Banana');
+    });
+
     test('applies the settings of the module the tree is rendered in', async ({ page }) => {
       setUserTsConfig(`mod.category_tree.categoryTree {
         showRootNode = 0

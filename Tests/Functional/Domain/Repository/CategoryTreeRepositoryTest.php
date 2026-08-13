@@ -34,6 +34,46 @@ final class CategoryTreeRepositoryTest extends FunctionalTestCase
     }
 
     #[Test]
+    public function findTreeLeavesOutExcludedCategoriesWithTheirBranch(): void
+    {
+        $tree = $this->subject->findTree(includeHidden: true, excluded: [2]);
+
+        self::assertSame(['Fruits', 'Vegetables'], array_column($tree, 'title'));
+        // Apple is excluded, and Granny Smith below it goes with it.
+        self::assertSame(['Banana'], array_column($tree[0]['children'], 'title'));
+    }
+
+    #[Test]
+    public function findTreeCanExcludeATopLevelCategory(): void
+    {
+        $tree = $this->subject->findTree(includeHidden: true, excluded: [1]);
+
+        self::assertSame(['Vegetables'], array_column($tree, 'title'));
+    }
+
+    #[Test]
+    public function findChildrenLeavesOutExcludedCategories(): void
+    {
+        $children = $this->subject->findChildren(1, true, [3]);
+
+        self::assertSame(['Apple'], array_column($children, 'title'));
+    }
+
+    #[Test]
+    public function findByUidDoesNotResolveAnExcludedCategory(): void
+    {
+        self::assertNull($this->subject->findByUid(2, true, [2]));
+        self::assertNotNull($this->subject->findByUid(2));
+    }
+
+    #[Test]
+    public function findRootlineStopsAtAnExcludedAncestor(): void
+    {
+        // Granny Smith is still there, but its way up ends where Apple was removed.
+        self::assertSame([4], $this->subject->findRootline(4, true, [2]));
+    }
+
+    #[Test]
     public function findDescendantUidsReturnsTheWholeBranchDeepestFirst(): void
     {
         self::assertSame([4, 3, 2], $this->subject->findDescendantUids(1));

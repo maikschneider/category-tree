@@ -233,6 +233,29 @@ final class CategoryTreeControllerTest extends FunctionalTestCase
     }
 
     #[Test]
+    public function excludedCategoriesAreMissingFromTheTree(): void
+    {
+        $items = $this->decode(
+            $this->createSubject(['excludeCategories' => '2'])->fetchDataAction($this->request())
+        );
+        $names = array_column($items, 'name');
+
+        self::assertContains('Fruits', $names);
+        self::assertNotContains('Apple', $names);
+        self::assertNotContains('Granny Smith', $names);
+    }
+
+    #[Test]
+    public function excludedCategoriesAreMissingFromASearch(): void
+    {
+        $items = $this->decode(
+            $this->createSubject(['excludeCategories' => '2'])->filterDataAction($this->request(['q' => 'granny']))
+        );
+
+        self::assertSame([], $items);
+    }
+
+    #[Test]
     public function descendantsReturnTheBranchBelowACategory(): void
     {
         $response = $this->createSubject()->fetchDescendantsAction($this->request(['identifier' => '1']));

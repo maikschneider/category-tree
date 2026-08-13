@@ -16,6 +16,20 @@ entryPoints = 12,48
 Each UID becomes a root of the tree. UIDs that do not resolve to an existing category are
 dropped, so a deleted category cannot blank out the navigation.
 
+## Leaving categories out
+
+`excludeCategories` is the counterpart: a comma-separated list of UIDs that never appear in
+the tree, together with everything below them.
+
+```
+excludeCategories = 51
+```
+
+An excluded category is dropped before the hierarchy is built, so its children are attached
+to nothing and the whole branch disappears — from the tree, from a search and from the
+rootline. The records themselves are untouched, and a module can exclude a different set,
+see [ModuleSettings.md](ModuleSettings.md).
+
 With `showRootNode = 1` (the default) a synthetic node is rendered above the entry points.
 Its identifier is `0`, and selecting it removes the `category` parameter from the module
 URL — the module's cue that no category is selected.

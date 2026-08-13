@@ -114,6 +114,24 @@ final class ModuleSettingsResolverTest extends FunctionalTestCase
     }
 
     #[Test]
+    public function excludedCategoriesAreMergedLikeEveryOtherSetting(): void
+    {
+        $settings = $this->resolve(
+            self::MODULE,
+            ['excludeCategories' => '2,3'],
+            [self::MODULE => ['excludeCategories' => [4]]]
+        );
+
+        self::assertSame([4], $settings->excludeCategories);
+    }
+
+    #[Test]
+    public function excludedCategoriesFallBackToTheExtensionConfiguration(): void
+    {
+        self::assertSame([2, 3], $this->resolve(self::MODULE, ['excludeCategories' => '2,3'])->excludeCategories);
+    }
+
+    #[Test]
     public function levelsToFetchNeverDropsBelowOne(): void
     {
         self::assertSame(1, $this->resolve(self::MODULE, [], [self::MODULE => ['levelsToFetch' => 0]])->levelsToFetch);

@@ -17,8 +17,8 @@ User TSconfig              what an integrator sets per user or group
 A setting that no layer touches keeps the value of the layer below, so a module overriding
 `entryPoints` still follows the extension configuration for everything else.
 
-Overridable settings: `entryPoints`, `showRootNode`, `rootNodeLabel`, `levelsToFetch`,
-`showHiddenCategories`. `enableCategoryModule` is not among them — it decides whether the
+Overridable settings: `entryPoints`, `excludeCategories`, `showRootNode`, `rootNodeLabel`,
+`levelsToFetch`, `showHiddenCategories`. `enableCategoryModule` is not among them — it decides whether the
 **Web > Categories** module is registered at all, long before any module runs.
 
 ## The module registry
@@ -29,6 +29,7 @@ identifier you used in `Configuration/Backend/Modules.php`:
 ```php
 $GLOBALS['TYPO3_CONF_VARS']['EXTENSIONS']['category_tree']['modules']['myext_reports'] = [
     'entryPoints' => [12, 48],
+    'excludeCategories' => [51],
     'showRootNode' => false,
     'rootNodeLabel' => 'LLL:EXT:my_ext/Resources/Private/Language/locallang_mod.xlf:tree.root',
     'levelsToFetch' => 3,
@@ -36,8 +37,8 @@ $GLOBALS['TYPO3_CONF_VARS']['EXTENSIONS']['category_tree']['modules']['myext_rep
 ];
 ```
 
-`entryPoints` accepts an array of UIDs here, or the comma-separated string the extension
-configuration uses.
+`entryPoints` and `excludeCategories` accept an array of UIDs here, or the comma-separated
+string the extension configuration uses.
 
 ## User TSconfig
 
@@ -46,6 +47,7 @@ The same settings, addressed as `mod.<module identifier>.categoryTree`:
 ```typoscript
 mod.myext_reports.categoryTree {
   entryPoints = 12,48
+  excludeCategories = 51
   showRootNode = 0
   levelsToFetch = 3
   showHiddenCategories = 0

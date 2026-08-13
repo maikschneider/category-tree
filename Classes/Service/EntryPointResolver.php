@@ -37,7 +37,11 @@ class EntryPointResolver
 
         return array_values(array_filter(
             $settings->entryPoints,
-            fn (int $uid): bool => $this->repository->findByUid($uid, $settings->showHiddenCategories) !== null
+            fn (int $uid): bool => $this->repository->findByUid(
+                $uid,
+                $settings->showHiddenCategories,
+                $settings->excludeCategories
+            ) !== null
         ));
     }
 }

@@ -186,7 +186,7 @@ and need `ddev init-typo3` to have run — see
 ## Documentation
 
 - [Per-module settings](Documentation/ModuleSettings.md) — giving a module its own entry
-  points, root node, depth or hidden-category handling
+  points, exclusions, root node, depth or hidden-category handling
 - [Entry points](Documentation/EntryPoints.md) — where the tree starts, and how to resolve
   it dynamically
 - [Events](Documentation/Events.md) — decorating tree nodes

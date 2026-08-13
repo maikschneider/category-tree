@@ -23,7 +23,7 @@ class CategoryTreeRepository
      */
     private ?array $categoryCache = null;
 
-    private ?bool $cachedIncludeHidden = null;
+    private ?string $cacheKey = null;
 
     public function __construct(private readonly ConnectionPool $connectionPool)
     {
@@ -33,11 +33,12 @@ class CategoryTreeRepository
      * Builds the nested tree below the given entry points.
      *
      * @param int[] $entryPoints Category UIDs acting as tree roots. Empty means all top-level categories.
+     * @param int[] $excluded Category UIDs to leave out, together with everything below them
      * @return array<int, array<string, mixed>> Nested category rows, each with a "children" key
      */
-    public function findTree(array $entryPoints = [], bool $includeHidden = true): array
+    public function findTree(array $entryPoints = [], bool $includeHidden = true, array $excluded = []): array
     {
-        $nested = $this->buildNestedMap($includeHidden);
+        $nested = $this->buildNestedMap($includeHidden, $excluded);
 
         if ($entryPoints === []) {
             return array_values(array_filter(
@@ -59,11 +60,12 @@ class CategoryTreeRepository
     /**
      * Direct children of a single category, each with its own nested subtree.
      *
+     * @param int[] $excluded
      * @return array<int, array<string, mixed>>
      */
-    public function findChildren(int $parent, bool $includeHidden = true): array
+    public function findChildren(int $parent, bool $includeHidden = true, array $excluded = []): array
     {
-        $nested = $this->buildNestedMap($includeHidden);
+        $nested = $this->buildNestedMap($includeHidden, $excluded);
 
         return $nested[$parent]['children'] ?? [];
     }
@@ -71,11 +73,12 @@ class CategoryTreeRepository
     /**
      * Category UIDs from the topmost ancestor down to (and including) the given category.
      *
+     * @param int[] $excluded
      * @return int[]
      */
-    public function findRootline(int $categoryUid, bool $includeHidden = true): array
+    public function findRootline(int $categoryUid, bool $includeHidden = true, array $excluded = []): array
     {
-        $categories = $this->loadCategories($includeHidden);
+        $categories = $this->loadCategories($includeHidden, $excluded);
 
         $rootline = [];
         $current = $categoryUid;
@@ -120,11 +123,12 @@ class CategoryTreeRepository
     }
 
     /**
+     * @param int[] $excluded
      * @return array<string, mixed>|null
      */
-    public function findByUid(int $categoryUid, bool $includeHidden = true): ?array
+    public function findByUid(int $categoryUid, bool $includeHidden = true, array $excluded = []): ?array
     {
-        return $this->loadCategories($includeHidden)[$categoryUid] ?? null;
+        return $this->loadCategories($includeHidden, $excluded)[$categoryUid] ?? null;
     }
 
     /**
@@ -179,11 +183,12 @@ class CategoryTreeRepository
     /**
      * Category rows keyed by uid, each carrying its nested children.
      *
+     * @param int[] $excluded
      * @return array<int, array<string, mixed>>
      */
-    private function buildNestedMap(bool $includeHidden): array
+    private function buildNestedMap(bool $includeHidden, array $excluded = []): array
     {
-        $categories = $this->loadCategories($includeHidden);
+        $categories = $this->loadCategories($includeHidden, $excluded);
 
         $map = [];
         foreach ($categories as $uid => $category) {
@@ -205,11 +210,16 @@ class CategoryTreeRepository
     /**
      * Flat category rows keyed by uid, ordered by parent and sorting.
      *
+     * An excluded category is dropped from this map, which also drops everything below it:
+     * a child whose parent is gone is attached to nothing and never reaches the tree.
+     *
+     * @param int[] $excluded
      * @return array<int, array<string, mixed>>
      */
-    private function loadCategories(bool $includeHidden): array
+    private function loadCategories(bool $includeHidden, array $excluded = []): array
     {
-        if ($this->categoryCache !== null && $this->cachedIncludeHidden === $includeHidden) {
+        $cacheKey = ($includeHidden ? '1' : '0') . ':' . implode(',', $excluded);
+        if ($this->categoryCache !== null && $this->cacheKey === $cacheKey) {
             return $this->categoryCache;
         }
 
@@ -234,11 +244,14 @@ class CategoryTreeRepository
 
         $categories = [];
         foreach ($rows as $row) {
+            if (in_array((int)$row['uid'], $excluded, true)) {
+                continue;
+            }
             $categories[(int)$row['uid']] = $row;
         }
 
         $this->categoryCache = $categories;
-        $this->cachedIncludeHidden = $includeHidden;
+        $this->cacheKey = $cacheKey;
 
         return $categories;
     }

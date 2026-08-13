@@ -14,6 +14,7 @@ final readonly class CategoryTreeSettings
 {
     /**
      * @param int[] $entryPoints Category UIDs the tree starts from; empty means all top-level categories
+     * @param int[] $excludeCategories Category UIDs left out of the tree, together with everything below them
      * @param string|null $module Identifier of the module the tree is rendered in, null outside a module
      */
     public function __construct(
@@ -22,6 +23,7 @@ final readonly class CategoryTreeSettings
         public string $rootNodeLabel,
         public int $levelsToFetch,
         public bool $showHiddenCategories,
+        public array $excludeCategories = [],
         public ?string $module = null,
     ) {
     }

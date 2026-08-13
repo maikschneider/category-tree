@@ -1,6 +1,9 @@
 # cat=tree/entrypoint/010; type=string; label=Entry points: Comma-separated list of sys_category UIDs used as the roots of the tree. Leave empty to use all top-level categories (parent = 0).
 entryPoints =
 
+# cat=tree/entrypoint/015; type=string; label=Exclude categories: Comma-separated list of sys_category UIDs to leave out of the tree, together with everything below them.
+excludeCategories =
+
 # cat=tree/entrypoint/020; type=boolean; label=Show root node: Render a synthetic root node above the entry points. Selecting it clears the current category selection.
 showRootNode = 1
 

@@ -26,6 +26,7 @@ class ModuleSettingsResolver implements SingletonInterface
      */
     private const KEYS = [
         'entryPoints',
+        'excludeCategories',
         'showRootNode',
         'rootNodeLabel',
         'levelsToFetch',
@@ -52,11 +53,12 @@ class ModuleSettingsResolver implements SingletonInterface
         );
 
         return new CategoryTreeSettings(
-            entryPoints: $this->toEntryPoints($values['entryPoints']),
+            entryPoints: $this->toUids($values['entryPoints']),
             showRootNode: (bool)$values['showRootNode'],
             rootNodeLabel: trim((string)$values['rootNodeLabel']),
             levelsToFetch: max(1, (int)$values['levelsToFetch']),
             showHiddenCategories: (bool)$values['showHiddenCategories'],
+            excludeCategories: $this->toUids($values['excludeCategories']),
             module: $moduleIdentifier,
         );
     }
@@ -139,12 +141,12 @@ class ModuleSettingsResolver implements SingletonInterface
     }
 
     /**
-     * Entry points are a comma-separated list in the extension configuration and in
-     * TSconfig, and may be a plain array of UIDs in the registry.
+     * UID lists are comma-separated in the extension configuration and in TSconfig, and may
+     * be a plain array in the registry.
      *
      * @return int[]
      */
-    private function toEntryPoints(mixed $value): array
+    private function toUids(mixed $value): array
     {
         $uids = is_array($value)
             ? array_map(intval(...), $value)

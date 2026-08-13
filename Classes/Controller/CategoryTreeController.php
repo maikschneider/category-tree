@@ -83,7 +83,11 @@ class CategoryTreeController
 
         if ($parentIdentifier !== null && MathUtility::canBeInterpretedAsInteger($parentIdentifier)) {
             $startDepth = (int)($request->getQueryParams()['depth'] ?? 0) + 1;
-            $categories = $this->categoryTreeRepository->findChildren((int)$parentIdentifier, $includeHidden);
+            $categories = $this->categoryTreeRepository->findChildren(
+                (int)$parentIdentifier,
+                $includeHidden,
+                $settings->excludeCategories
+            );
             $items = $this->flattenAll($categories, $startDepth, $startDepth + $levelsToFetch - 1);
 
             return new JsonResponse($this->prepareItems($request, $items));
@@ -91,7 +95,8 @@ class CategoryTreeController
 
         $categories = $this->categoryTreeRepository->findTree(
             $this->entryPointResolver->resolve($settings),
-            $includeHidden
+            $includeHidden,
+            $settings->excludeCategories
         );
         $showRootNode = $settings->showRootNode;
         $startDepth = $showRootNode ? 1 : 0;
@@ -125,7 +130,8 @@ class CategoryTreeController
         $settings = $this->settingsResolver->resolve($request);
         $categories = $this->categoryTreeRepository->findTree(
             $this->entryPointResolver->resolve($settings),
-            $settings->showHiddenCategories
+            $settings->showHiddenCategories,
+            $settings->excludeCategories
         );
         $matched = $this->categoryTreeRepository->filterTree($categories, $searchTerm);
 
@@ -166,7 +172,11 @@ class CategoryTreeController
         }
 
         $settings = $this->settingsResolver->resolve($request);
-        $rootline = $this->categoryTreeRepository->findRootline((int)$identifier, $settings->showHiddenCategories);
+        $rootline = $this->categoryTreeRepository->findRootline(
+            (int)$identifier,
+            $settings->showHiddenCategories,
+            $settings->excludeCategories
+        );
 
         if ($settings->showRootNode) {
             array_unshift($rootline, 0);
