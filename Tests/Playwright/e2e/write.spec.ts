@@ -3,6 +3,7 @@ import {
   CATEGORY,
   categoryRow,
   confirmModal,
+  contextMenuAction,
   deleteNode,
   dropNewCategoryOn,
   expandNode,
@@ -118,6 +119,34 @@ test.describe('Editing categories from the tree', () => {
       await page.locator('typo3-backend-modal button[name="cancel"]').click();
 
       expect(categoryRow(CATEGORY.banana)?.parent).toBe(String(CATEGORY.fruits));
+    });
+  });
+
+  test.describe('context menu', () => {
+    // The context menu writes records without telling the tree: a delete only announces
+    // itself through the shared DataHandler event, and hiding is a plain module reload.
+    test('drops a category deleted from the context menu', async ({ page }) => {
+      await contextMenuAction(page, CATEGORY.vegetables, 'Delete');
+      await confirmModal(page, 'delete');
+
+      await expect(node(page, CATEGORY.vegetables)).toHaveCount(0, { timeout: 30000 });
+      await expect.poll(() => categoryRow(CATEGORY.vegetables), { timeout: 30000 }).toBeNull();
+    });
+
+    test('marks a category hidden from the context menu', async ({ page }) => {
+      await contextMenuAction(page, CATEGORY.fruits, 'Disable');
+
+      await expect(
+        node(page, CATEGORY.fruits).locator('typo3-backend-icon[overlay="overlay-hidden"]')
+      ).toBeVisible({ timeout: 30000 });
+    });
+
+    test('keeps the tree loaded while a node is selected', async ({ page }) => {
+      // Selecting a node navigates the content area too, which must not send the tree
+      // through a reload of its own.
+      await node(page, CATEGORY.fruits).locator('.node-contentlabel').click();
+
+      await expect(nodeLabel(page, CATEGORY.vegetables)).toHaveText('Vegetables');
     });
   });
 

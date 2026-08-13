@@ -139,6 +139,14 @@ export function contentFrame(page: Page): FrameLocator {
   return page.frameLocator('[name="list_frame"]');
 }
 
+/** Opens the record context menu of a node and clicks one of its items. */
+export async function contextMenuAction(page: Page, uid: number, label: string): Promise<void> {
+  await node(page, uid).click({ button: 'right' });
+  const item = page.locator('.context-menu .context-menu-item', { hasText: label }).first();
+  await expect(item).toBeVisible();
+  await item.click();
+}
+
 //
 // Write operations
 //

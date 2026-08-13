@@ -402,15 +402,21 @@ export class CategoryTreeNavigationComponent extends TreeModuleState(LitElement)
 
   private configuration: Configuration = null;
 
+  private treeTriggeredModuleLoad: boolean = false;
+
   public override connectedCallback(): void {
     super.connectedCallback();
     document.addEventListener('typo3:categorytree:refresh', this.refresh);
     document.addEventListener('typo3:categorytree:selectFirstNode', this.selectFirstNode);
+    document.addEventListener('typo3:datahandler:process', this.refreshOnCategoryWrite);
+    document.addEventListener('typo3-module-loaded', this.refreshOnModuleLoad);
   }
 
   public override disconnectedCallback(): void {
     document.removeEventListener('typo3:categorytree:refresh', this.refresh);
     document.removeEventListener('typo3:categorytree:selectFirstNode', this.selectFirstNode);
+    document.removeEventListener('typo3:datahandler:process', this.refreshOnCategoryWrite);
+    document.removeEventListener('typo3-module-loaded', this.refreshOnModuleLoad);
     super.disconnectedCallback();
   }
 
@@ -487,6 +493,31 @@ export class CategoryTreeNavigationComponent extends TreeModuleState(LitElement)
   };
 
   /**
+  * Deleting, copying or pasting a category from the context menu goes through the shared
+  * DataHandler endpoint, which announces itself for every table. Only ours concerns us.
+  */
+  private readonly refreshOnCategoryWrite = (event: CustomEvent): void => {
+    if (event.detail?.payload?.table === TABLE) {
+      this.resolveTree()?.refreshOrFilterTree();
+    }
+  };
+
+  /**
+  * Hiding a category has no event of its own: the context menu writes the record by
+  * navigating the content area, so a module that finished loading is the only signal that
+  * something may have changed. Navigations the tree caused itself are skipped, or every
+  * click on a node would reload the tree it was just clicked in.
+  */
+  private readonly refreshOnModuleLoad = (): void => {
+    if (this.treeTriggeredModuleLoad) {
+      this.treeTriggeredModuleLoad = false;
+      return;
+    }
+
+    this.resolveTree()?.refreshOrFilterTree();
+  };
+
+  /**
   * Reloads the content frame for the selected category.
   *
   * The current module keeps its own query parameters; only "category" is (re)written.
@@ -526,6 +557,7 @@ export class CategoryTreeNavigationComponent extends TreeModuleState(LitElement)
       target.searchParams.set('category', node.identifier);
     }
 
+    this.treeTriggeredModuleLoad = true;
     top.TYPO3.Backend.ContentContainer.setUrl(target.toString());
   };
 
