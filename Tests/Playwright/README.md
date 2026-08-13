@@ -23,9 +23,14 @@ ancestors of a match.
 state, opening a category (including a lazily loaded one) in the regular record form,
 marking the selection in the tree, and returning to the module when the form is closed.
 
-Two of these are regression guards for bugs that only appeared in a real backend and that
+`e2e/write.spec.ts` — editing from the tree: renaming a node, creating a category as a
+child or a sibling, moving and copying with the confirmation dialog, and deleting a
+category together with its branch.
+
+Three of these are regression guards for bugs that only appeared in a real backend and that
 no PHP test could have caught: the parent module's page tree overriding the navigation
-component, and the tree collapsing to zero height for lack of its own styles.
+component, the tree collapsing to zero height for lack of its own styles, and the context
+menu staying silent because the tree reference was taken before the tree existed.
 
 ## Conventions
 
@@ -34,6 +39,8 @@ component, and the tree collapsing to zero height for lack of its own styles.
   `ddev init-typo3` load.
 - `resetCategories()` restores that fixture in `beforeEach`, so specs may create, rename
   and delete freely. The suite runs serially for the same reason.
+- Writes go through DataHandler over AJAX, so assertions on the database wait for the row
+  (`waitForCategoryByTitle`) instead of reading it right after the keystroke.
 - Backend credentials default to those of `ddev init-typo3` and can be overridden with
   `TYPO3_SETUP_ADMIN_USERNAME` / `TYPO3_SETUP_ADMIN_PASSWORD`.
 - Helpers live in `support/typo3.ts`; add new ones there rather than reaching into the DOM

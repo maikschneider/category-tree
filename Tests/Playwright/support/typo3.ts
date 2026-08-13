@@ -79,12 +79,19 @@ export function flushCaches(): void {
   }
 }
 
+/**
+* The backend keeps its module iframe busy long after the page is usable, so every
+* navigation waits for an element that proves readiness instead of for "load".
+*/
+const NAVIGATION = { waitUntil: 'domcontentloaded' } as const;
+const READY_TIMEOUT = 60000;
+
 export async function loginAsAdmin(page: Page): Promise<void> {
-  await page.goto('/typo3/');
+  await page.goto('/typo3/', NAVIGATION);
   await page.fill('#t3-username', BACKEND_USER.username);
   await page.fill('#t3-password', BACKEND_USER.password);
   await page.click('#t3-login-submit');
-  await expect(page.locator('.scaffold-header')).toBeVisible({ timeout: 30000 });
+  await expect(page.locator('.scaffold-header')).toBeVisible({ timeout: READY_TIMEOUT });
 }
 
 /**
@@ -92,8 +99,8 @@ export async function loginAsAdmin(page: Page): Promise<void> {
 * race the AJAX request that fills it.
 */
 export async function openCategoryModule(page: Page): Promise<void> {
-  await page.goto('/typo3/module/web/categories');
-  await expect(node(page, CATEGORY.root)).toBeVisible({ timeout: 30000 });
+  await page.goto('/typo3/module/web/categories', NAVIGATION);
+  await expect(node(page, CATEGORY.root)).toBeVisible({ timeout: READY_TIMEOUT });
 }
 
 export function tree(page: Page): Locator {
@@ -130,4 +137,147 @@ export async function searchTree(page: Page, term: string): Promise<void> {
 /** The TYPO3 backend renders modules inside this iframe. */
 export function contentFrame(page: Page): FrameLocator {
   return page.frameLocator('[name="list_frame"]');
+}
+
+//
+// Write operations
+//
+// Creating, moving, copying and deleting a node all happen by dropping something onto
+// the tree, and HTML5 drag and drop cannot be simulated faithfully from Playwright.
+// These helpers therefore call the same public tree methods the drop handler calls
+// (Tree::addNode / moveNode / deleteNode), which is where this extension's own code
+// takes over. Only the browser's drag plumbing — core's code — is skipped.
+//
+
+export type NodePosition = 'inside' | 'before' | 'after';
+
+const TREE_SELECTOR = 'typo3-backend-navigation-component-category-tree-tree';
+const TOOLBAR_DRAG_ITEM =
+  'typo3-backend-navigation-component-category-tree-toolbar .tree-toolbar__drag-node';
+
+/** The inline rename/create input the tree shows on the node currently being edited. */
+export function editInput(page: Page): Locator {
+  return tree(page).locator('input.node-edit');
+}
+
+/** Types a name into the inline input and confirms it. */
+export async function submitNodeName(page: Page, name: string): Promise<void> {
+  await editInput(page).fill(name);
+  await editInput(page).press('Enter');
+}
+
+/** Opens the inline rename input of an existing node the way an editor does. */
+export async function startRename(page: Page, uid: number): Promise<void> {
+  await node(page, uid).locator('.node-contentlabel').dblclick();
+  await expect(editInput(page)).toBeVisible();
+}
+
+/**
+ * Starts a "new category" drag on the toolbar and drops it onto the given node,
+ * leaving the tree in inline-edit mode for the new node.
+ */
+export async function dropNewCategoryOn(
+  page: Page,
+  targetUid: number,
+  position: NodePosition = 'inside'
+): Promise<void> {
+  await page.evaluate(
+    ([treeSelector, dragItemSelector, uid, pos]) => {
+      const item = document.querySelector(dragItemSelector as string);
+      // Populates tree.draggingNode through the toolbar's own dragstart handler.
+      item.dispatchEvent(
+        new DragEvent('dragstart', { dataTransfer: new DataTransfer(), bubbles: true })
+      );
+
+      const treeElement = document.querySelector(treeSelector as string) as any;
+      const target = treeElement.nodes.find((n: any) => n.identifier === String(uid));
+      return treeElement.addNode(treeElement.draggingNode, target, pos);
+    },
+    [TREE_SELECTOR, TOOLBAR_DRAG_ITEM, targetUid, position] as const
+  );
+
+  await expect(editInput(page)).toBeVisible();
+}
+
+export async function moveNode(
+  page: Page,
+  uid: number,
+  targetUid: number,
+  position: NodePosition
+): Promise<void> {
+  await callTreeMethod(page, 'moveNode', uid, targetUid, position);
+}
+
+export async function deleteNode(page: Page, uid: number): Promise<void> {
+  await callTreeMethod(page, 'deleteNode', uid);
+}
+
+/** Clicks a button of the confirmation modal the tree opens for move, copy and delete. */
+export async function confirmModal(page: Page, button: 'move' | 'copy' | 'delete'): Promise<void> {
+  const action = page.locator(`typo3-backend-modal button[name="${button}"]`);
+  await expect(action).toBeVisible({ timeout: 30000 });
+  await action.click();
+  await expect(page.locator('typo3-backend-modal')).toHaveCount(0, { timeout: 30000 });
+}
+
+async function callTreeMethod(
+  page: Page,
+  method: 'moveNode' | 'deleteNode',
+  uid: number,
+  targetUid?: number,
+  position?: NodePosition
+): Promise<void> {
+  await page.evaluate(
+    ([treeSelector, methodName, nodeUid, target, pos]) => {
+      const treeElement = document.querySelector(treeSelector as string) as any;
+      const find = (id: unknown) => treeElement.nodes.find((n: any) => n.identifier === String(id));
+
+      return methodName === 'deleteNode'
+        ? treeElement.deleteNode(find(nodeUid))
+        : treeElement.moveNode(find(nodeUid), find(target), pos);
+    },
+    [TREE_SELECTOR, method, uid, targetUid, position] as const
+  );
+}
+
+/**
+ * A single category row, or null when it does not exist. Deleted rows are excluded,
+ * so a soft-deleted category reads as gone.
+ */
+export function categoryRow(uid: number): Record<string, string> | null {
+  const row = mysql(
+    `SELECT uid, pid, title, parent, sorting, deleted FROM sys_category WHERE uid = ${uid};`
+  );
+  if (row === '') {
+    return null;
+  }
+
+  const [id, pid, title, parent, sorting, deleted] = row.split('\t');
+  return deleted === '1' ? null : { uid: id, pid, title, parent, sorting };
+}
+
+/**
+ * Waits for a category to appear under the given title and returns its row.
+ *
+ * DataHandler is written to over AJAX after the keystroke that confirms an edit, so
+ * reading the table straight away races the request.
+ */
+export async function waitForCategoryByTitle(title: string): Promise<Record<string, string>> {
+  await expect.poll(() => categoryUidByTitle(title), { timeout: 30000 }).not.toBeNull();
+
+  return categoryRow(categoryUidByTitle(title)) as Record<string, string>;
+}
+
+/** The uid of the category with this title, or null while it does not exist (yet). */
+export function categoryUidByTitle(title: string): number | null {
+  const uid = mysql(
+    `SELECT uid FROM sys_category WHERE title = '${title.replace(/'/g, "''")}' AND deleted = 0;`
+  );
+
+  return uid === '' ? null : Number(uid);
+}
+
+/** The uid of the most recently created category, for asserting on a fresh record. */
+export function newestCategoryUid(): number {
+  return Number(mysql('SELECT MAX(uid) FROM sys_category;'));
 }
