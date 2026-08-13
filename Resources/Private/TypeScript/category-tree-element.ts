@@ -115,8 +115,10 @@ export class EditableCategoryTree extends Tree {
       const targetParentId = target.parentIdentifier || '0';
 
       if (data.position === TreeNodePositionEnum.BEFORE) {
-        const previousNode = this.getPreviousNode(target);
-        targetUid = ((previousNode.depth === target.depth) ? '-' : '') + previousNode.identifier;
+        // Sorting is calculated per storage pid, so "before the target" is expressed as
+        // "after the record rendered above it" — a sibling, or the parent itself when the
+        // node becomes the first child.
+        targetUid = '-' + this.getPreviousNode(target).identifier;
         parentUid = targetParentId;
         pidValue = String(target.storagePid ?? 0);
       } else if (data.position === TreeNodePositionEnum.AFTER) {
@@ -128,8 +130,11 @@ export class EditableCategoryTree extends Tree {
         // fillInFieldArray skips it (see DataHandler::resolveSortingAndPidForNewRecord).
         pidValue = '-' + target.identifier;
       } else {
-        // INSIDE — the new node becomes a child of the target
-        parentUid = targetUid;
+        // INSIDE — the node becomes a child of the target. A positive target is a storage
+        // page, so DataHandler sorts the record to the top of it, the way the page tree
+        // puts a node dropped onto a parent first among its children.
+        targetUid = String(target.storagePid ?? 0);
+        parentUid = target.identifier;
         pidValue = String(target.storagePid ?? 0);
       }
     }
@@ -153,7 +158,14 @@ export class EditableCategoryTree extends Tree {
       }
       params = '&cmd[' + TABLE + '][' + data.node.identifier + '][delete]=1';
     } else {
-      params = 'cmd[' + TABLE + '][' + data.node.identifier + '][' + data.command + ']=' + targetUid;
+      // Moving and copying are two operations for a parent-based tree: the DataHandler
+      // command places the record on a storage page and gives it a sorting value, and the
+      // extended "paste" form updates the parent field afterwards. For a copy that update
+      // hits the new record, so its uid never has to travel to the client.
+      const command = 'cmd[' + TABLE + '][' + data.node.identifier + '][' + data.command + ']';
+      params = command + '[action]=paste' +
+        '&' + command + '[target]=' + encodeURIComponent(targetUid) +
+        '&' + command + '[update][parent]=' + encodeURIComponent(parentUid);
     }
 
     this.requestTreeUpdate(params).then((response) => {
