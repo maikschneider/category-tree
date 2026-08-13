@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import {
   CATEGORY,
+  contentFrame,
   expandNode,
   loginAsAdmin,
   node,
@@ -8,6 +9,7 @@ import {
   openCategoryModule,
   resetCategories,
   setUserTsConfig,
+  switchToModule,
   searchTree,
   tree,
   visibleNodeNames,
@@ -80,6 +82,29 @@ test.describe('Category tree navigation', () => {
   test.describe('per-module settings', () => {
     test.afterEach(() => {
       setUserTsConfig('');
+    });
+
+    test('follows the settings of the module switched to', async ({ page }) => {
+      // The backend shares one navigation component between the modules that declare it,
+      // and the tree reads its setup only once — so without replacing the tree, the second
+      // module would keep showing the first module's entry points until a page reload.
+      // EXT:category_tree_second registers entryPoints = [5] and no root node.
+      await switchToModule(page, 'category_tree_second');
+
+      await expect(contentFrame(page).locator('#second-module')).toBeVisible({ timeout: 30000 });
+      await expect(nodeLabel(page, CATEGORY.vegetables)).toHaveText('Vegetables');
+      await expect(node(page, CATEGORY.root)).toHaveCount(0);
+      await expect(node(page, CATEGORY.fruits)).toHaveCount(0);
+    });
+
+    test('restores its own settings when switching back', async ({ page }) => {
+      await switchToModule(page, 'category_tree_second');
+      await expect(node(page, CATEGORY.root)).toHaveCount(0);
+
+      await switchToModule(page, 'category_tree');
+
+      await expect(node(page, CATEGORY.root)).toBeVisible({ timeout: 30000 });
+      await expect(nodeLabel(page, CATEGORY.fruits)).toHaveText('Fruits');
     });
 
     test('applies the settings of the module the tree is rendered in', async ({ page }) => {

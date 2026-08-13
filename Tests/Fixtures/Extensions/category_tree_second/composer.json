@@ -1,0 +1,19 @@
+{
+	"name": "maikschneider/category-tree-second",
+	"description": "Acceptance test fixture: a second backend module using the category tree with settings of its own.",
+	"license": "GPL-2.0-or-later",
+	"type": "typo3-cms-extension",
+	"require": {
+		"maikschneider/category-tree": "*"
+	},
+	"autoload": {
+		"psr-4": {
+			"MaikSchneider\\CategoryTreeSecond\\": "Classes"
+		}
+	},
+	"extra": {
+		"typo3/cms": {
+			"extension-key": "category_tree_second"
+		}
+	}
+}

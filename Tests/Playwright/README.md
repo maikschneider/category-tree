@@ -32,6 +32,14 @@ no PHP test could have caught: the parent module's page tree overriding the navi
 component, the tree collapsing to zero height for lack of its own styles, and the context
 menu staying silent because the tree reference was taken before the tree existed.
 
+## The second module
+
+`Tests/Fixtures/Extensions/category_tree_second` is an acceptance fixture: a module that
+declares the same navigation component and registers settings of its own (`entryPoints`,
+no root node). It is required as a path repository in `require-dev`, so `ddev composer
+install` sets it up, and it exists to test what only shows up between two modules — the
+backend shares one navigation component instance between them.
+
 ## Conventions
 
 - Nodes are addressed by category uid (`node(page, CATEGORY.apple)`), not by label — the

@@ -119,6 +119,14 @@ export async function openCategoryModule(
   await expect(rendered.first()).toBeVisible({ timeout: READY_TIMEOUT });
 }
 
+/**
+* Switches modules the way an editor does, through the module menu, so the backend stays on
+* the page it is on. A reload would hide anything the navigation component caches.
+*/
+export async function switchToModule(page: Page, identifier: string): Promise<void> {
+  await page.locator(`[data-modulemenu-identifier="${identifier}"]`).click();
+}
+
 export function tree(page: Page): Locator {
   return page.locator('typo3-backend-navigation-component-category-tree-tree');
 }

@@ -12,6 +12,7 @@
 import { html, LitElement, type TemplateResult } from 'lit';
 import { customElement } from 'lit/decorators.js';
 import { until } from 'lit/directives/until.js';
+import { keyed } from 'lit/directives/keyed.js';
 import { lll } from '@typo3/core/lit-helper.js';
 import AjaxRequest from '@typo3/core/ajax/ajax-request.js';
 import { ModuleUtility } from '@typo3/backend/module.js';
@@ -402,6 +403,8 @@ export class CategoryTreeNavigationComponent extends TreeModuleState(LitElement)
 
   private configuration: Configuration = null;
 
+  private configurationModule: string | null = null;
+
   private treeTriggeredModuleLoad: boolean = false;
 
   public override connectedCallback(): void {
@@ -437,7 +440,11 @@ export class CategoryTreeNavigationComponent extends TreeModuleState(LitElement)
   protected async renderTree(): Promise<TemplateResult> {
     const configuration = await this.getConfiguration();
 
-    return html`
+    // The backend keeps one navigation component per component name and hands it to every
+    // module that declares it, while the tree reads its setup only once, when it is first
+    // updated. Keying the elements on the module therefore replaces them on a switch,
+    // instead of leaving the previous module's settings and endpoints in place.
+    return html`${keyed(this.configurationModule ?? '', html`
       <typo3-backend-navigation-component-category-tree-toolbar
         id="typo3-categorytree-toolbar"
         .tree="${this.tree}"
@@ -452,19 +459,21 @@ export class CategoryTreeNavigationComponent extends TreeModuleState(LitElement)
           @typo3:tree:nodes-prepared=${this.selectActiveNodeInLoadedNodes}
         ></typo3-backend-navigation-component-category-tree-tree>
       </div>
-    `;
+    `)}`;
   }
 
   protected getConfiguration(): Promise<Configuration> {
-    if (this.configuration !== null) {
+    const module = this.getCurrentModuleIdentifier();
+    if (this.configuration !== null && this.configurationModule === module) {
       return Promise.resolve(this.configuration);
     }
+    this.configurationModule = module;
 
     // Settings are resolved per module, and the endpoints are routes of their own with no
     // knowledge of the module they are called from — so the module travels with this one
     // request and comes back baked into the URLs of the others.
     return (new AjaxRequest(top.TYPO3.settings.ajaxUrls.category_tree_configuration))
-      .withQueryArguments({ module: this.getCurrentModuleIdentifier() })
+      .withQueryArguments({ module: module })
       .get()
       .then(async (response: AjaxResponse): Promise<Configuration> => {
         this.configuration = await response.resolve('json');
@@ -518,8 +527,19 @@ export class CategoryTreeNavigationComponent extends TreeModuleState(LitElement)
   * click on a node would reload the tree it was just clicked in.
   */
   private readonly refreshOnModuleLoad = (): void => {
-    if (this.treeTriggeredModuleLoad) {
-      this.treeTriggeredModuleLoad = false;
+    const treeTriggered = this.treeTriggeredModuleLoad;
+    this.treeTriggeredModuleLoad = false;
+
+    // Settings are resolved per module, so a module the tree was not built for needs a
+    // fresh tree rather than a reload of the nodes of the previous one.
+    if (this.getCurrentModuleIdentifier() !== this.configurationModule) {
+      this.configuration = null;
+      this.tree = null;
+      this.requestUpdate();
+      return;
+    }
+
+    if (treeTriggered) {
       return;
     }
 

@@ -27,8 +27,18 @@
 		"typo3/cms-backend": "^13.4 || ^14.3",
 		"typo3/cms-core": "^13.4 || ^14.3"
 	},
+	"repositories": [
+		{
+			"type": "path",
+			"url": "Tests/Fixtures/Extensions/*",
+			"options": {
+				"symlink": true
+			}
+		}
+	],
 	"require-dev": {
 		"armin/editorconfig-cli": "^2.1",
+		"maikschneider/category-tree-second": "@dev",
 		"ergebnis/composer-normalize": "^2.45",
 		"friendsofphp/php-cs-fixer": "^3.12",
 		"move-elevator/composer-translation-validator": "^1.3",
