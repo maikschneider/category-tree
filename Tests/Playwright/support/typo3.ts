@@ -173,9 +173,9 @@ export async function startRename(page: Page, uid: number): Promise<void> {
 }
 
 /**
- * Starts a "new category" drag on the toolbar and drops it onto the given node,
- * leaving the tree in inline-edit mode for the new node.
- */
+* Starts a "new category" drag on the toolbar and drops it onto the given node,
+* leaving the tree in inline-edit mode for the new node.
+*/
 export async function dropNewCategoryOn(
   page: Page,
   targetUid: number,
@@ -241,9 +241,9 @@ async function callTreeMethod(
 }
 
 /**
- * A single category row, or null when it does not exist. Deleted rows are excluded,
- * so a soft-deleted category reads as gone.
- */
+* A single category row, or null when it does not exist. Deleted rows are excluded,
+* so a soft-deleted category reads as gone.
+*/
 export function categoryRow(uid: number): Record<string, string> | null {
   const row = mysql(
     `SELECT uid, pid, title, parent, sorting, deleted FROM sys_category WHERE uid = ${uid};`
@@ -257,11 +257,11 @@ export function categoryRow(uid: number): Record<string, string> | null {
 }
 
 /**
- * Waits for a category to appear under the given title and returns its row.
- *
- * DataHandler is written to over AJAX after the keystroke that confirms an edit, so
- * reading the table straight away races the request.
- */
+* Waits for a category to appear under the given title and returns its row.
+*
+* DataHandler is written to over AJAX after the keystroke that confirms an edit, so
+* reading the table straight away races the request.
+*/
 export async function waitForCategoryByTitle(title: string): Promise<Record<string, string>> {
   await expect.poll(() => categoryUidByTitle(title), { timeout: 30000 }).not.toBeNull();
 
