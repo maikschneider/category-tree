@@ -7,7 +7,10 @@ import {
   node,
   nodeLabel,
   openCategoryModule,
+  moduleUrl,
   resetCategories,
+  seedModuleState,
+  selectNode,
   setUserTsConfig,
   switchToModule,
   searchTree,
@@ -95,6 +98,35 @@ test.describe('Category tree navigation', () => {
       await expect(nodeLabel(page, CATEGORY.vegetables)).toHaveText('Vegetables');
       await expect(node(page, CATEGORY.root)).toHaveCount(0);
       await expect(node(page, CATEGORY.fruits)).toHaveCount(0);
+    });
+
+    test('does not submit the selected category as a page id', async ({ page }) => {
+      // For a module with a navigation component, the module menu prepends "id=" from the
+      // module state of the module name up to the first underscore, and the backend
+      // validates that id as a page uid. A state type of "category" would therefore make
+      // "category_tree" open with the selected category uid as its page id, which fails
+      // with "You don't have access to this page".
+      await selectNode(page, CATEGORY.vegetables);
+      await switchToModule(page, 'category_tree_second');
+      await switchToModule(page, 'category_tree');
+
+      await expect(contentFrame(page).locator('body')).not.toContainText('access to this page');
+      expect(await moduleUrl(page)).not.toContain('id=');
+    });
+
+    test('survives a page id it never asked for', async ({ page }) => {
+      // The module menu prepends "id=" from the module state of the module name up to the
+      // first underscore, which a session of an older version still holds under "category".
+      // The backend validates that id as a page uid and refuses the request, and until it
+      // is dropped the tree carries it into every following selection.
+      await seedModuleState(page, 'category', CATEGORY.vegetables);
+      await switchToModule(page, 'category_tree_second');
+      await switchToModule(page, 'category_tree');
+      await selectNode(page, CATEGORY.fruits);
+
+      await expect(contentFrame(page).locator('body')).not.toContainText('access to this page');
+      await expect.poll(() => moduleUrl(page)).toContain('category=1');
+      expect(await moduleUrl(page)).not.toContain('id=');
     });
 
     test('restores its own settings when switching back', async ({ page }) => {

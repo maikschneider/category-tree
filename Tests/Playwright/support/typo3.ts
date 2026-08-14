@@ -127,6 +127,22 @@ export async function switchToModule(page: Page, identifier: string): Promise<vo
   await page.locator(`[data-modulemenu-identifier="${identifier}"]`).click();
 }
 
+/** Puts a category into the module state the way a previous selection would have. */
+export async function seedModuleState(page: Page, type: string, uid: number): Promise<void> {
+  await page.evaluate(
+    ([key, identifier]) =>
+      sessionStorage.setItem(`t3-module-state-${key}`, JSON.stringify({ identifier, treeIdentifier: null })),
+    [type, String(uid)] as const
+  );
+}
+
+/** The endpoint the backend currently has loaded in its content area. */
+export function moduleUrl(page: Page): Promise<string> {
+  return page.evaluate(
+    () => document.querySelector('typo3-backend-module-router')?.getAttribute('endpoint') ?? ''
+  );
+}
+
 export function tree(page: Page): Locator {
   return page.locator('typo3-backend-navigation-component-category-tree-tree');
 }

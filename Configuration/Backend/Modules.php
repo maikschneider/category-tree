@@ -25,7 +25,7 @@ return [
         // The parent module ("content", aliased "web") ships the page tree, and a submodule
         // inherits it unless inheritance is switched off explicitly.
         'inheritNavigationComponentFromMainModule' => false,
-        'navigationComponent' => '@maikschneider/category-tree/category-tree-element',
+        'navigationComponent' => CategoryTreeConfiguration::NAVIGATION_COMPONENT,
         'routes' => [
             '_default' => [
                 'target' => CategoryModuleController::class . '::handleRequest',

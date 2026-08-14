@@ -7,6 +7,12 @@ parameters:
 
 	level: 7
 
+	typo3:
+		requestGetAttributeMapping:
+			# Set by the backend router, and the only way to reach the module before
+			# BackendModuleValidator puts it on the request itself.
+			route: TYPO3\CMS\Backend\Routing\Route
+
 	bootstrapFiles:
 		- vendor/autoload.php
 

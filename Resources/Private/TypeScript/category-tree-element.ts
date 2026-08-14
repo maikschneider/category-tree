@@ -44,8 +44,15 @@ export const navigationComponentName: string = 'typo3-backend-navigation-compone
 /**
 * Session key the selected category is remembered under. Deliberately distinct from the
 * page tree's "web" state so both trees can live side by side without overwriting each other.
+*
+* The hyphen is what keeps it out of the module URL: for a module with a navigation
+* component, the module menu prepends "id=" from the state of the module name up to the
+* first underscore (ModuleMenu.includeId), and the backend then validates that id as a page
+* uid. A module named "category_tree" would read the state of type "category" — a category
+* uid submitted as a page uid, which fails with "You don't have access to this page".
+* Module identifiers cannot contain a hyphen, so this type is never derived from one.
 */
-const moduleStateType: string = 'category';
+const moduleStateType: string = 'category-tree';
 
 const TABLE: string = 'sys_category';
 
@@ -574,7 +581,9 @@ export class CategoryTreeNavigationComponent extends TreeModuleState(LitElement)
     const current = new URL(top.TYPO3.Backend.ContentContainer.getUrl(), window.location.origin);
     if (current.pathname === target.pathname) {
       current.searchParams.forEach((value: string, key: string): void => {
-        if (key !== 'category' && !target.searchParams.has(key)) {
+        // "id" is a page uid to the backend and is never ours to carry: once one arrives,
+        // copying it forward would attach it to every following selection.
+        if (key !== 'category' && key !== 'id' && !target.searchParams.has(key)) {
           target.searchParams.set(key, value);
         }
       });

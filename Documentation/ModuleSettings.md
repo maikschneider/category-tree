@@ -69,6 +69,18 @@ Because that identifier arrives from the client, it is only accepted for a modul
 exists and that the backend user may enter. Anything else is ignored and the tree falls
 back to the extension configuration.
 
+## The "id" parameter
+
+The backend treats `id` as a page uid, and its module menu prepends one to every module
+that has a navigation component. A module navigated by categories has no page uid to put
+there, so any `id` reaching such a module is wrong and would be refused with "You don't have
+access to this page".
+
+The extension therefore removes `id` from every module whose navigation component is the
+category tree, redirecting once so the address bar is clean too. Do not use `id` for a
+purpose of your own in such a module — read your state from `category` and from parameters
+of your own naming, which the tree keeps intact when the selection changes.
+
 ## Settings in your own code
 
 `MaikSchneider\CategoryTree\Configuration\ModuleSettingsResolver` resolves a
