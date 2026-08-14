@@ -6,7 +6,9 @@ import {
   loginAsAdmin,
   node,
   nodeLabel,
+  notifications,
   openCategoryModule,
+  reportRequestFailure,
   moduleUrl,
   resetCategories,
   seedModuleState,
@@ -80,6 +82,22 @@ test.describe('Category tree navigation', () => {
     await node(page, CATEGORY.root).click({ button: 'right' });
 
     await expect(page.locator('.context-menu')).toHaveCount(0);
+  });
+
+  test.describe('request failures', () => {
+    test('stays silent when a request was replaced by a newer one', async ({ page }) => {
+      // The tree drops a request as soon as a newer one supersedes it, and the browser
+      // rejects the dropped one as aborted. Nothing went wrong, so nothing is reported.
+      await reportRequestFailure(page, 'aborted');
+
+      await expect(notifications(page)).toHaveCount(0);
+    });
+
+    test('still reports a request that actually failed', async ({ page }) => {
+      await reportRequestFailure(page, 'failed');
+
+      await expect(notifications(page)).toHaveCount(1);
+    });
   });
 
   test.describe('per-module settings', () => {

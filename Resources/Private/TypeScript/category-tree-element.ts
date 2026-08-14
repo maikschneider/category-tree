@@ -352,6 +352,23 @@ export class EditableCategoryTree extends Tree {
     });
   }
 
+  /**
+  * A request the tree replaced with a newer one — a search term typed over the previous
+  * one, a reload triggered while the last was still running — rejects as aborted. That is
+  * the component working as intended, so it stays silent instead of alarming the editor.
+  *
+  * Core guards its own filter request this way; every other path (its node fetches, our
+  * writes and the descendants lookup) reports whatever it is handed, which is why the guard
+  * lives here, where all of them end up.
+  */
+  public override errorNotification(error: any = null): void {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      return;
+    }
+
+    super.errorNotification(error);
+  }
+
   private requestTreeUpdate(params: string): Promise<any> {
     return (new AjaxRequest(top.TYPO3.settings.ajaxUrls.record_process))
       .post(params, {

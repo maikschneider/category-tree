@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A request the tree replaced with a newer one no longer reports itself as an error. Only
+  requests that actually failed are shown to the editor.
 - Modules using the category tree no longer fail with "You don't have access to this page":
   the `id` parameter the backend prepends from the module state is removed before the module
   is validated, and the tree stops carrying one into the following selections.

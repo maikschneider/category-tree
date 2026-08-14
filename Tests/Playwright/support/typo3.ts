@@ -127,6 +127,23 @@ export async function switchToModule(page: Page, identifier: string): Promise<vo
   await page.locator(`[data-modulemenu-identifier="${identifier}"]`).click();
 }
 
+/** The error notifications the backend currently shows. */
+export function notifications(page: Page): Locator {
+  return page.locator('typo3-notification-message');
+}
+
+/** Hands the tree the rejection a request produces, without waiting for a real one. */
+export async function reportRequestFailure(page: Page, kind: 'aborted' | 'failed'): Promise<void> {
+  await page.evaluate((failureKind) => {
+    const tree = document.querySelector('typo3-backend-navigation-component-category-tree-tree') as any;
+    tree.errorNotification(
+      failureKind === 'aborted'
+        ? new DOMException('The user aborted a request.', 'AbortError')
+        : new TypeError('Failed to fetch')
+    );
+  }, kind);
+}
+
 /** Puts a category into the module state the way a previous selection would have. */
 export async function seedModuleState(page: Page, type: string, uid: number): Promise<void> {
   await page.evaluate(
