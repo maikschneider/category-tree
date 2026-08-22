@@ -230,6 +230,46 @@ export class EditableCategoryTree extends Tree {
     ];
   }
 
+  /**
+   * Prevents the core Tree's page wizard from opening when a new category type is
+   * dropped onto the tree, and starts inline editing instead.
+   *
+   * The core base class unconditionally calls openPageWizardModal for any drop
+   * carrying DataTransferTypes.newTreenode, passing r.doktype — but a category
+   * node carries categoryType, not doktype, so the wizard opens with undefined
+   * data and fails to fetch available page types.
+   */
+  protected override handleNodeDrop(event: DragEvent): boolean {
+    this.cleanDrag();
+
+    if (event.dataTransfer.types.includes(DataTransferTypes.treenode)) {
+      return super.handleNodeDrop(event);
+    }
+
+    if (event.dataTransfer.types.includes(DataTransferTypes.newTreenode)) {
+      event.preventDefault();
+      let target = this.getNodeFromDragEvent(event);
+      if (target === null) {
+        return false;
+      }
+      const newNode: TreeNodeInterface = JSON.parse(event.dataTransfer.getData(DataTransferTypes.newTreenode));
+      if (this.nodeDragPosition === TreeNodePositionEnum.AFTER) {
+        this.addNode(newNode, target, TreeNodePositionEnum.INSIDE);
+      } else if (this.nodeDragPosition === TreeNodePositionEnum.BEFORE) {
+        const previous = this.getPreviousNode(target);
+        const position = previous.depth === target.depth ? TreeNodePositionEnum.AFTER : TreeNodePositionEnum.INSIDE;
+        this.addNode(newNode, previous, position);
+      } else {
+        this.addNode(newNode, target, TreeNodePositionEnum.INSIDE);
+      }
+      this.nodeDragMode = null;
+      this.nodeDragPosition = null;
+      return true;
+    }
+
+    return false;
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   protected override async handleNodeAdd(node: TreeNodeInterface, target: TreeNodeInterface, position: TreeNodePositionEnum): Promise<void> {
     this.updateComplete.then(() => {
