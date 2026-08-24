@@ -231,14 +231,14 @@ export class EditableCategoryTree extends Tree {
   }
 
   /**
-   * Prevents the core Tree's page wizard from opening when a new category type is
-   * dropped onto the tree, and starts inline editing instead.
-   *
-   * The core base class unconditionally calls openPageWizardModal for any drop
-   * carrying DataTransferTypes.newTreenode, passing r.doktype — but a category
-   * node carries categoryType, not doktype, so the wizard opens with undefined
-   * data and fails to fetch available page types.
-   */
+  * Prevents the core Tree's page wizard from opening when a new category type is
+  * dropped onto the tree, and starts inline editing instead.
+  *
+  * The core base class unconditionally calls openPageWizardModal for any drop
+  * carrying DataTransferTypes.newTreenode, passing r.doktype — but a category
+  * node carries categoryType, not doktype, so the wizard opens with undefined
+  * data and fails to fetch available page types.
+  */
   protected override handleNodeDrop(event: DragEvent): boolean {
     this.cleanDrag();
 
