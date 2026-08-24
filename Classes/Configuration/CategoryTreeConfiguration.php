@@ -20,6 +20,11 @@ class CategoryTreeConfiguration implements SingletonInterface
 {
     public const EXTENSION_KEY = 'category_tree';
 
+    /**
+     * The "navigationComponent" a module registers to render the category tree.
+     */
+    public const NAVIGATION_COMPONENT = '@maikschneider/category-tree/category-tree-element';
+
     private const DEFAULTS = [
         'entryPoints' => '',
         'excludeCategories' => '',
