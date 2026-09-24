@@ -15,6 +15,8 @@ use Psr\EventDispatcher\EventDispatcherInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use TYPO3\CMS\Backend\Attribute\AsController;
+use TYPO3\CMS\Backend\Dto\Tree\Label\Label;
+use TYPO3\CMS\Backend\Dto\Tree\Status\StatusInformation;
 use TYPO3\CMS\Backend\Dto\Tree\TreeItem;
 use TYPO3\CMS\Backend\Routing\UriBuilder;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
@@ -24,6 +26,7 @@ use TYPO3\CMS\Core\Imaging\IconFactory;
 use TYPO3\CMS\Core\Imaging\IconSize;
 use TYPO3\CMS\Core\Localization\LanguageService;
 use TYPO3\CMS\Core\Schema\Struct\SelectItem;
+use TYPO3\CMS\Core\Type\ContextualFeedbackSeverity;
 use TYPO3\CMS\Core\Utility\MathUtility;
 
 /**
@@ -325,8 +328,8 @@ class CategoryTreeController
                     deletable: (bool)($item['deletable'] ?? false),
                     icon: (string)($item['icon'] ?? ''),
                     overlayIcon: (string)($item['overlayIcon'] ?? ''),
-                    statusInformation: (array)($item['statusInformation'] ?? []),
-                    labels: (array)($item['labels'] ?? []),
+                    statusInformation: self::toStatusInformation($item['statusInformation'] ?? []),
+                    labels: self::toLabels($item['labels'] ?? []),
                 ),
                 categoryType: (string)($item['categoryType'] ?? ''),
                 nameSourceField: (string)($item['nameSourceField'] ?? 'title'),
@@ -335,6 +338,63 @@ class CategoryTreeController
             ),
             $items
         );
+    }
+
+    /**
+     * Listeners hand badges over as plain arrays (see Documentation/Events.md), which core's
+     * tree item only accepts as DTOs. Ready-made DTOs pass through unchanged.
+     *
+     * @return list<StatusInformation>
+     */
+    protected static function toStatusInformation(mixed $entries): array
+    {
+        $statusInformation = [];
+        foreach (is_array($entries) ? $entries : [] as $entry) {
+            if ($entry instanceof StatusInformation) {
+                $statusInformation[] = $entry;
+                continue;
+            }
+            if (!is_array($entry)) {
+                continue;
+            }
+            $severity = $entry['severity'] ?? null;
+            $statusInformation[] = new StatusInformation(
+                label: (string)($entry['label'] ?? ''),
+                severity: $severity instanceof ContextualFeedbackSeverity
+                    ? $severity
+                    : ContextualFeedbackSeverity::tryFrom((int)($severity ?? ContextualFeedbackSeverity::INFO->value))
+                        ?? ContextualFeedbackSeverity::INFO,
+                priority: (int)($entry['priority'] ?? 0),
+                icon: (string)($entry['icon'] ?? ''),
+                overlayIcon: (string)($entry['overlayIcon'] ?? ''),
+            );
+        }
+
+        return $statusInformation;
+    }
+
+    /**
+     * @return list<Label>
+     */
+    protected static function toLabels(mixed $entries): array
+    {
+        $labels = [];
+        foreach (is_array($entries) ? $entries : [] as $entry) {
+            if ($entry instanceof Label) {
+                $labels[] = $entry;
+                continue;
+            }
+            if (!is_array($entry)) {
+                continue;
+            }
+            $labels[] = new Label(
+                label: (string)($entry['label'] ?? ''),
+                color: (string)($entry['color'] ?? '#ff8700'),
+                priority: (int)($entry['priority'] ?? 0),
+            );
+        }
+
+        return $labels;
     }
 
     /**

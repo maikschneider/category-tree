@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace MaikSchneider\CategoryTree\Tests\Functional\Controller;
 
 use MaikSchneider\CategoryTree\Controller\CategoryTreeController;
+use MaikSchneider\CategoryTree\Event\AfterCategoryTreeItemsPreparedEvent;
 use PHPUnit\Framework\Attributes\Test;
 use Psr\Http\Message\ResponseInterface;
+use TYPO3\CMS\Backend\Dto\Tree\Label\Label;
+use TYPO3\CMS\Core\EventDispatcher\ListenerProvider;
 use TYPO3\CMS\Core\Http\ServerRequest;
 use TYPO3\CMS\Core\Localization\LanguageServiceFactory;
 use TYPO3\TestingFramework\Core\Functional\FunctionalTestCase;
@@ -316,6 +319,42 @@ final class CategoryTreeControllerTest extends FunctionalTestCase
 
         self::assertSame('record_type', $configuration['typeField']);
         self::assertSame(['0', 'department'], array_column($configuration['categoryTypes'], 'nodeType'));
+    }
+
+    #[Test]
+    public function badgesAndLabelsFromAListenerReachThePayload(): void
+    {
+        $this->get('service_container')->set(
+            'category-tree-test.decorate-items',
+            static function (AfterCategoryTreeItemsPreparedEvent $event): void {
+                $items = $event->getItems();
+                foreach ($items as &$item) {
+                    if ($item['name'] === 'Fruits') {
+                        $item['statusInformation'][] = ['label' => 'Internal', 'icon' => 'actions-lock', 'severity' => 1, 'priority' => 2];
+                        $item['labels'][] = ['label' => 'Seasonal', 'color' => '#00ff00'];
+                        $item['labels'][] = new Label('Prebuilt', '#0000ff');
+                    }
+                }
+                unset($item);
+                $event->setItems($items);
+            }
+        );
+        $this->get(ListenerProvider::class)->addListener(
+            AfterCategoryTreeItemsPreparedEvent::class,
+            'category-tree-test.decorate-items'
+        );
+
+        $fruits = $this->itemByName(
+            $this->decode($this->createSubject()->fetchDataAction($this->request())),
+            'Fruits'
+        );
+
+        self::assertSame('Internal', $fruits['statusInformation'][0]['label']);
+        self::assertSame('actions-lock', $fruits['statusInformation'][0]['icon']);
+        self::assertSame(1, $fruits['statusInformation'][0]['severity']);
+        self::assertSame(2, $fruits['statusInformation'][0]['priority']);
+        self::assertSame(['Seasonal', 'Prebuilt'], array_column($fruits['labels'], 'label'));
+        self::assertSame(['#00ff00', '#0000ff'], array_column($fruits['labels'], 'color'));
     }
 
     /**
