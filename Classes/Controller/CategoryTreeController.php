@@ -9,6 +9,7 @@ use MaikSchneider\CategoryTree\Configuration\ModuleSettingsResolver;
 use MaikSchneider\CategoryTree\Domain\Repository\CategoryTreeRepository;
 use MaikSchneider\CategoryTree\Dto\Tree\CategoryTreeItem;
 use MaikSchneider\CategoryTree\Event\AfterCategoryTreeItemsPreparedEvent;
+use MaikSchneider\CategoryTree\Security\CategoryPermissions;
 use MaikSchneider\CategoryTree\Service\EntryPointResolver;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -42,6 +43,7 @@ class CategoryTreeController
         protected readonly CategoryTreeRepository $categoryTreeRepository,
         protected readonly ModuleSettingsResolver $settingsResolver,
         protected readonly EntryPointResolver $entryPointResolver,
+        protected readonly CategoryPermissions $categoryPermissions,
     ) {
     }
 
@@ -82,6 +84,9 @@ class CategoryTreeController
         $parentIdentifier = $request->getQueryParams()['parent'] ?? null;
 
         if ($parentIdentifier !== null && MathUtility::canBeInterpretedAsInteger($parentIdentifier)) {
+            if (!$this->categoryPermissions->isAccessible((int)$parentIdentifier)) {
+                return new JsonResponse([]);
+            }
             $startDepth = (int)($request->getQueryParams()['depth'] ?? 0) + 1;
             $categories = $this->categoryTreeRepository->findChildren(
                 (int)$parentIdentifier,
@@ -93,11 +98,7 @@ class CategoryTreeController
             return new JsonResponse($this->prepareItems($request, $items));
         }
 
-        $categories = $this->categoryTreeRepository->findTree(
-            $this->entryPointResolver->resolve($settings),
-            $includeHidden,
-            $settings->excludeCategories
-        );
+        $categories = $this->findRootCategories($settings);
         $showRootNode = $settings->showRootNode;
         $startDepth = $showRootNode ? 1 : 0;
 
@@ -128,11 +129,7 @@ class CategoryTreeController
         }
 
         $settings = $this->settingsResolver->resolve($request);
-        $categories = $this->categoryTreeRepository->findTree(
-            $this->entryPointResolver->resolve($settings),
-            $settings->showHiddenCategories,
-            $settings->excludeCategories
-        );
+        $categories = $this->findRootCategories($settings);
         $matched = $this->categoryTreeRepository->filterTree($categories, $searchTerm);
 
         // A filtered result is always fully expanded, so no depth limit applies.
@@ -148,7 +145,10 @@ class CategoryTreeController
     public function fetchDescendantsAction(ServerRequestInterface $request): ResponseInterface
     {
         $identifier = $request->getQueryParams()['identifier'] ?? null;
-        if ($identifier === null || !MathUtility::canBeInterpretedAsInteger($identifier)) {
+        if ($identifier === null
+            || !MathUtility::canBeInterpretedAsInteger($identifier)
+            || !$this->categoryPermissions->isAccessible((int)$identifier)
+        ) {
             return new JsonResponse(['descendants' => []]);
         }
 
@@ -167,22 +167,46 @@ class CategoryTreeController
     public function fetchRootlineAction(ServerRequestInterface $request): ResponseInterface
     {
         $identifier = $request->getQueryParams()['identifier'] ?? null;
-        if ($identifier === null || !MathUtility::canBeInterpretedAsInteger($identifier)) {
+        if ($identifier === null
+            || !MathUtility::canBeInterpretedAsInteger($identifier)
+            || !$this->categoryPermissions->isAccessible((int)$identifier)
+        ) {
             return new JsonResponse(['rootline' => []]);
         }
 
         $settings = $this->settingsResolver->resolve($request);
-        $rootline = $this->categoryTreeRepository->findRootline(
+        $rootline = $this->categoryPermissions->restrictRootline($this->categoryTreeRepository->findRootline(
             (int)$identifier,
             $settings->showHiddenCategories,
             $settings->excludeCategories
-        );
+        ));
 
         if ($settings->showRootNode) {
             array_unshift($rootline, 0);
         }
 
         return new JsonResponse(['rootline' => array_map(strval(...), $rootline)]);
+    }
+
+    /**
+     * The nested tree below the entry points, narrowed to the category mounts of the user.
+     * Permissions apply after the resolver, so a decorated resolver cannot widen access.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function findRootCategories(CategoryTreeSettings $settings): array
+    {
+        $entryPoints = $this->entryPointResolver->resolve($settings);
+        $mountedEntryPoints = $this->categoryPermissions->restrictEntryPoints($entryPoints);
+        if ($mountedEntryPoints === []) {
+            return [];
+        }
+
+        return $this->categoryTreeRepository->findTree(
+            $mountedEntryPoints ?? $entryPoints,
+            $settings->showHiddenCategories,
+            $settings->excludeCategories
+        );
     }
 
     /**

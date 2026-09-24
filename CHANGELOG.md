@@ -22,6 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and User TSconfig, on top of the extension configuration.
 - `excludeCategories`: categories that never appear in the tree, together with everything
   below them.
+- Category mounts (`category_perms` of backend users and groups) restrict the tree, its
+  search, rootline and descendants endpoints and the Categories module to the mounted
+  branches, like TYPO3's own category selector.
 
 ### Fixed
 

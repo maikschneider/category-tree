@@ -19,11 +19,12 @@ class CategoryTreeRepository
     public const TABLE = 'sys_category';
 
     /**
-     * @var array<int, array<string, mixed>>|null
+     * Keyed by visibility and exclusions, because a single request reads the unfiltered
+     * hierarchy for permission checks next to the filtered one the tree renders.
+     *
+     * @var array<string, array<int, array<string, mixed>>>
      */
-    private ?array $categoryCache = null;
-
-    private ?string $cacheKey = null;
+    private array $categoryCache = [];
 
     public function __construct(private readonly ConnectionPool $connectionPool)
     {
@@ -219,8 +220,8 @@ class CategoryTreeRepository
     private function loadCategories(bool $includeHidden, array $excluded = []): array
     {
         $cacheKey = ($includeHidden ? '1' : '0') . ':' . implode(',', $excluded);
-        if ($this->categoryCache !== null && $this->cacheKey === $cacheKey) {
-            return $this->categoryCache;
+        if (isset($this->categoryCache[$cacheKey])) {
+            return $this->categoryCache[$cacheKey];
         }
 
         $queryBuilder = $this->connectionPool->getQueryBuilderForTable(self::TABLE);
@@ -250,8 +251,7 @@ class CategoryTreeRepository
             $categories[(int)$row['uid']] = $row;
         }
 
-        $this->categoryCache = $categories;
-        $this->cacheKey = $cacheKey;
+        $this->categoryCache[$cacheKey] = $categories;
 
         return $categories;
     }
