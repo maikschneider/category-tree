@@ -128,11 +128,22 @@ tree nodes with badges and labels.
 
 ## Permissions
 
-Reading the tree is not permission filtered — like TYPO3's own category selector, every
-backend user sees the category hierarchy. Writing is gated twice: the toolbar's
-create/edit/delete affordances only appear when the user has `tables_modify` access to
-`sys_category`, and every write goes through `DataHandler`, which enforces record level
-access regardless of what the frontend allows.
+Reading the tree follows the category mounts of the backend user, the same way TYPO3's own
+category selector does. When a user or one of its groups sets **Category mounts**
+(`category_perms`), only the mounted categories and everything below them appear: they
+become the roots of the tree, and search, the rootline, descendants and the Categories
+module stay inside them. Admins, and users without any category mount, see the whole tree.
+
+Mounts narrow the configured entry points rather than replace them. An entry point inside a
+mount stays, an entry point above a mount is replaced by the mounts below it, and an entry
+point outside every mount disappears. They apply after the `EntryPointResolver`, so a
+decorated resolver cannot widen what a user sees.
+
+Writing is gated twice: the toolbar's create/edit/delete affordances only appear when the
+user has `tables_modify` access to `sys_category`, and every write goes through
+`DataHandler`, which enforces record level access regardless of what the frontend allows.
+Like core, `DataHandler` does not evaluate category mounts, so they limit what the tree
+offers, not which records a user may write elsewhere.
 
 ## Development
 

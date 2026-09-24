@@ -1,0 +1,11 @@
+"be_groups",,,,
+,"uid","pid","title","category_perms"
+,1,0,"Vegetable editors","5"
+"be_users",,,,,,
+,"uid","pid","username","admin","usergroup","category_perms"
+,3,0,"apple-editor",0,"","2"
+,4,0,"vegetable-group-editor",0,"1",""
+,5,0,"nested-mounts-editor",0,"","4,2"
+,6,0,"fruit-editor",0,"","1"
+,7,0,"admin-with-mounts",1,"","2"
+,8,0,"unrestricted-editor",0,"",""

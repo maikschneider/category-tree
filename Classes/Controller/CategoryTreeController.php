@@ -9,11 +9,14 @@ use MaikSchneider\CategoryTree\Configuration\ModuleSettingsResolver;
 use MaikSchneider\CategoryTree\Domain\Repository\CategoryTreeRepository;
 use MaikSchneider\CategoryTree\Dto\Tree\CategoryTreeItem;
 use MaikSchneider\CategoryTree\Event\AfterCategoryTreeItemsPreparedEvent;
+use MaikSchneider\CategoryTree\Security\CategoryPermissions;
 use MaikSchneider\CategoryTree\Service\EntryPointResolver;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use TYPO3\CMS\Backend\Attribute\AsController;
+use TYPO3\CMS\Backend\Dto\Tree\Label\Label;
+use TYPO3\CMS\Backend\Dto\Tree\Status\StatusInformation;
 use TYPO3\CMS\Backend\Dto\Tree\TreeItem;
 use TYPO3\CMS\Backend\Routing\UriBuilder;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
@@ -23,6 +26,7 @@ use TYPO3\CMS\Core\Imaging\IconFactory;
 use TYPO3\CMS\Core\Imaging\IconSize;
 use TYPO3\CMS\Core\Localization\LanguageService;
 use TYPO3\CMS\Core\Schema\Struct\SelectItem;
+use TYPO3\CMS\Core\Type\ContextualFeedbackSeverity;
 use TYPO3\CMS\Core\Utility\MathUtility;
 
 /**
@@ -42,6 +46,7 @@ class CategoryTreeController
         protected readonly CategoryTreeRepository $categoryTreeRepository,
         protected readonly ModuleSettingsResolver $settingsResolver,
         protected readonly EntryPointResolver $entryPointResolver,
+        protected readonly CategoryPermissions $categoryPermissions,
     ) {
     }
 
@@ -82,6 +87,9 @@ class CategoryTreeController
         $parentIdentifier = $request->getQueryParams()['parent'] ?? null;
 
         if ($parentIdentifier !== null && MathUtility::canBeInterpretedAsInteger($parentIdentifier)) {
+            if (!$this->categoryPermissions->isAccessible((int)$parentIdentifier)) {
+                return new JsonResponse([]);
+            }
             $startDepth = (int)($request->getQueryParams()['depth'] ?? 0) + 1;
             $categories = $this->categoryTreeRepository->findChildren(
                 (int)$parentIdentifier,
@@ -93,11 +101,7 @@ class CategoryTreeController
             return new JsonResponse($this->prepareItems($request, $items));
         }
 
-        $categories = $this->categoryTreeRepository->findTree(
-            $this->entryPointResolver->resolve($settings),
-            $includeHidden,
-            $settings->excludeCategories
-        );
+        $categories = $this->findRootCategories($settings);
         $showRootNode = $settings->showRootNode;
         $startDepth = $showRootNode ? 1 : 0;
 
@@ -128,11 +132,7 @@ class CategoryTreeController
         }
 
         $settings = $this->settingsResolver->resolve($request);
-        $categories = $this->categoryTreeRepository->findTree(
-            $this->entryPointResolver->resolve($settings),
-            $settings->showHiddenCategories,
-            $settings->excludeCategories
-        );
+        $categories = $this->findRootCategories($settings);
         $matched = $this->categoryTreeRepository->filterTree($categories, $searchTerm);
 
         // A filtered result is always fully expanded, so no depth limit applies.
@@ -148,7 +148,10 @@ class CategoryTreeController
     public function fetchDescendantsAction(ServerRequestInterface $request): ResponseInterface
     {
         $identifier = $request->getQueryParams()['identifier'] ?? null;
-        if ($identifier === null || !MathUtility::canBeInterpretedAsInteger($identifier)) {
+        if ($identifier === null
+            || !MathUtility::canBeInterpretedAsInteger($identifier)
+            || !$this->categoryPermissions->isAccessible((int)$identifier)
+        ) {
             return new JsonResponse(['descendants' => []]);
         }
 
@@ -167,22 +170,46 @@ class CategoryTreeController
     public function fetchRootlineAction(ServerRequestInterface $request): ResponseInterface
     {
         $identifier = $request->getQueryParams()['identifier'] ?? null;
-        if ($identifier === null || !MathUtility::canBeInterpretedAsInteger($identifier)) {
+        if ($identifier === null
+            || !MathUtility::canBeInterpretedAsInteger($identifier)
+            || !$this->categoryPermissions->isAccessible((int)$identifier)
+        ) {
             return new JsonResponse(['rootline' => []]);
         }
 
         $settings = $this->settingsResolver->resolve($request);
-        $rootline = $this->categoryTreeRepository->findRootline(
+        $rootline = $this->categoryPermissions->restrictRootline($this->categoryTreeRepository->findRootline(
             (int)$identifier,
             $settings->showHiddenCategories,
             $settings->excludeCategories
-        );
+        ));
 
         if ($settings->showRootNode) {
             array_unshift($rootline, 0);
         }
 
         return new JsonResponse(['rootline' => array_map(strval(...), $rootline)]);
+    }
+
+    /**
+     * The nested tree below the entry points, narrowed to the category mounts of the user.
+     * Permissions apply after the resolver, so a decorated resolver cannot widen access.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function findRootCategories(CategoryTreeSettings $settings): array
+    {
+        $entryPoints = $this->entryPointResolver->resolve($settings);
+        $mountedEntryPoints = $this->categoryPermissions->restrictEntryPoints($entryPoints);
+        if ($mountedEntryPoints === []) {
+            return [];
+        }
+
+        return $this->categoryTreeRepository->findTree(
+            $mountedEntryPoints ?? $entryPoints,
+            $settings->showHiddenCategories,
+            $settings->excludeCategories
+        );
     }
 
     /**
@@ -301,8 +328,8 @@ class CategoryTreeController
                     deletable: (bool)($item['deletable'] ?? false),
                     icon: (string)($item['icon'] ?? ''),
                     overlayIcon: (string)($item['overlayIcon'] ?? ''),
-                    statusInformation: (array)($item['statusInformation'] ?? []),
-                    labels: (array)($item['labels'] ?? []),
+                    statusInformation: self::toStatusInformation($item['statusInformation'] ?? []),
+                    labels: self::toLabels($item['labels'] ?? []),
                 ),
                 categoryType: (string)($item['categoryType'] ?? ''),
                 nameSourceField: (string)($item['nameSourceField'] ?? 'title'),
@@ -311,6 +338,63 @@ class CategoryTreeController
             ),
             $items
         );
+    }
+
+    /**
+     * Listeners hand badges over as plain arrays (see Documentation/Events.md), which core's
+     * tree item only accepts as DTOs. Ready-made DTOs pass through unchanged.
+     *
+     * @return list<StatusInformation>
+     */
+    protected static function toStatusInformation(mixed $entries): array
+    {
+        $statusInformation = [];
+        foreach (is_array($entries) ? $entries : [] as $entry) {
+            if ($entry instanceof StatusInformation) {
+                $statusInformation[] = $entry;
+                continue;
+            }
+            if (!is_array($entry)) {
+                continue;
+            }
+            $severity = $entry['severity'] ?? null;
+            $statusInformation[] = new StatusInformation(
+                label: (string)($entry['label'] ?? ''),
+                severity: $severity instanceof ContextualFeedbackSeverity
+                    ? $severity
+                    : ContextualFeedbackSeverity::tryFrom((int)($severity ?? ContextualFeedbackSeverity::INFO->value))
+                        ?? ContextualFeedbackSeverity::INFO,
+                priority: (int)($entry['priority'] ?? 0),
+                icon: (string)($entry['icon'] ?? ''),
+                overlayIcon: (string)($entry['overlayIcon'] ?? ''),
+            );
+        }
+
+        return $statusInformation;
+    }
+
+    /**
+     * @return list<Label>
+     */
+    protected static function toLabels(mixed $entries): array
+    {
+        $labels = [];
+        foreach (is_array($entries) ? $entries : [] as $entry) {
+            if ($entry instanceof Label) {
+                $labels[] = $entry;
+                continue;
+            }
+            if (!is_array($entry)) {
+                continue;
+            }
+            $labels[] = new Label(
+                label: (string)($entry['label'] ?? ''),
+                color: (string)($entry['color'] ?? '#ff8700'),
+                priority: (int)($entry['priority'] ?? 0),
+            );
+        }
+
+        return $labels;
     }
 
     /**

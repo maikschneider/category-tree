@@ -6,6 +6,7 @@ namespace MaikSchneider\CategoryTree\Controller;
 
 use MaikSchneider\CategoryTree\Configuration\CategoryTreeConfiguration;
 use MaikSchneider\CategoryTree\Domain\Repository\CategoryTreeRepository;
+use MaikSchneider\CategoryTree\Security\CategoryPermissions;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use TYPO3\CMS\Backend\Attribute\AsController;
@@ -31,6 +32,7 @@ class CategoryModuleController
         private readonly UriBuilder $uriBuilder,
         private readonly CategoryTreeRepository $categoryTreeRepository,
         private readonly CategoryTreeConfiguration $configuration,
+        private readonly CategoryPermissions $categoryPermissions,
     ) {
     }
 
@@ -60,7 +62,8 @@ class CategoryModuleController
     {
         $includeHidden = $this->configuration->shouldShowHiddenCategories();
 
-        return $this->categoryTreeRepository->findByUid($categoryUid, $includeHidden) !== null;
+        return $this->categoryTreeRepository->findByUid($categoryUid, $includeHidden) !== null
+            && $this->categoryPermissions->isAccessible($categoryUid);
     }
 
     /**
