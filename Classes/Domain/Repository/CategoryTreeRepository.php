@@ -209,10 +209,37 @@ class CategoryTreeRepository
     }
 
     /**
+     * UIDs of the excluded categories and of everything below them.
+     *
+     * @param array<int, array<string, mixed>> $categories
+     * @param int[] $excluded
+     * @return int[]
+     */
+    private function collectExcludedBranches(array $categories, array $excluded): array
+    {
+        $isExcluded = array_fill_keys($excluded, true);
+        foreach (array_keys($categories) as $uid) {
+            $chain = [];
+            $current = $uid;
+            // Stops at a known answer, the top level, or a cyclic parent reference.
+            while ($current > 0 && isset($categories[$current]) && !isset($isExcluded[$current]) && !isset($chain[$current])) {
+                $chain[$current] = true;
+                $current = (int)$categories[$current]['parent'];
+            }
+            $verdict = $isExcluded[$current] ?? false;
+            foreach (array_keys($chain) as $member) {
+                $isExcluded[$member] = $verdict;
+            }
+        }
+
+        return array_keys(array_filter($isExcluded));
+    }
+
+    /**
      * Flat category rows keyed by uid, ordered by parent and sorting.
      *
-     * An excluded category is dropped from this map, which also drops everything below it:
-     * a child whose parent is gone is attached to nothing and never reaches the tree.
+     * An excluded category is dropped from this map together with everything below it, so
+     * no part of the branch can be reached by uid either, e.g. as an entry point.
      *
      * @param int[] $excluded
      * @return array<int, array<string, mixed>>
@@ -245,10 +272,10 @@ class CategoryTreeRepository
 
         $categories = [];
         foreach ($rows as $row) {
-            if (in_array((int)$row['uid'], $excluded, true)) {
-                continue;
-            }
             $categories[(int)$row['uid']] = $row;
+        }
+        if ($excluded !== []) {
+            $categories = array_diff_key($categories, array_flip($this->collectExcludedBranches($categories, $excluded)));
         }
 
         $this->categoryCache[$cacheKey] = $categories;

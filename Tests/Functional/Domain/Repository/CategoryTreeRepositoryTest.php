@@ -52,6 +52,14 @@ final class CategoryTreeRepositoryTest extends FunctionalTestCase
     }
 
     #[Test]
+    public function anEntryPointBelowAnExcludedCategoryIsLeftOut(): void
+    {
+        self::assertSame([], $this->subject->findTree([2], true, [1]));
+        self::assertSame([], $this->subject->findChildren(2, true, [1]));
+        self::assertNull($this->subject->findByUid(4, true, [1]));
+    }
+
+    #[Test]
     public function findChildrenLeavesOutExcludedCategories(): void
     {
         $children = $this->subject->findChildren(1, true, [3]);
@@ -67,10 +75,10 @@ final class CategoryTreeRepositoryTest extends FunctionalTestCase
     }
 
     #[Test]
-    public function findRootlineStopsAtAnExcludedAncestor(): void
+    public function findRootlineIsEmptyBelowAnExcludedAncestor(): void
     {
-        // Granny Smith is still there, but its way up ends where Apple was removed.
-        self::assertSame([4], $this->subject->findRootline(4, true, [2]));
+        // Granny Smith goes with Apple, so there is no way up to report.
+        self::assertSame([], $this->subject->findRootline(4, true, [2]));
     }
 
     #[Test]

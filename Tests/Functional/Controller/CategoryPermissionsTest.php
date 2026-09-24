@@ -129,6 +129,18 @@ final class CategoryPermissionsTest extends FunctionalTestCase
     }
 
     #[Test]
+    public function aMountBelowAnExcludedCategoryIsLeftOutWithItsBranch(): void
+    {
+        $subject = $this->createSubjectFor(3, ['excludeCategories' => '1']);
+
+        $items = $this->decode($subject->fetchDataAction($this->request()));
+        self::assertSame(['All categories'], array_column($items, 'name'));
+        self::assertFalse($items[0]['hasChildren']);
+        self::assertSame([], $this->decode($subject->fetchDataAction($this->request(['parent' => '2']))));
+        self::assertSame([], $this->decode($subject->filterDataAction($this->request(['q' => 'granny']))));
+    }
+
+    #[Test]
     public function childrenOfAnUnmountedCategoryAreNotReturned(): void
     {
         $subject = $this->createSubjectFor(3);
