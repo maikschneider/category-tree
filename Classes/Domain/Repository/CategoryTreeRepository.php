@@ -6,6 +6,7 @@ namespace MaikSchneider\CategoryTree\Domain\Repository;
 
 use TYPO3\CMS\Core\Database\Connection;
 use TYPO3\CMS\Core\Database\ConnectionPool;
+use TYPO3\CMS\Core\Database\Query\Restriction\DeletedRestriction;
 use TYPO3\CMS\Core\Database\Query\Restriction\HiddenRestriction;
 
 /**
@@ -25,6 +26,16 @@ class CategoryTreeRepository
      * @var array<string, array<int, array<string, mixed>>>
      */
     private array $categoryCache = [];
+
+    /**
+     * @var array<int, array<string, mixed>>|null
+     */
+    private ?array $allCategories = null;
+
+    /**
+     * @var array<int, int>|null
+     */
+    private ?array $parentMap = null;
 
     public function __construct(private readonly ConnectionPool $connectionPool)
     {
@@ -209,10 +220,39 @@ class CategoryTreeRepository
     }
 
     /**
+     * UIDs of the excluded categories and of everything below them.
+     *
+     * @param int[] $excluded
+     * @return int[]
+     */
+    private function collectExcludedBranches(array $excluded): array
+    {
+        $parents = $this->fetchParentMap();
+        $isExcluded = array_fill_keys($excluded, true);
+        foreach (array_keys($parents) as $uid) {
+            $chain = [];
+            $current = $uid;
+            // Stops at a known answer, the top level, or a cyclic parent reference.
+            while ($current > 0 && isset($parents[$current]) && !isset($isExcluded[$current]) && !isset($chain[$current])) {
+                $chain[$current] = true;
+                $current = $parents[$current];
+            }
+            $verdict = $isExcluded[$current] ?? false;
+            foreach (array_keys($chain) as $member) {
+                $isExcluded[$member] = $verdict;
+            }
+        }
+
+        return array_keys(array_filter($isExcluded));
+    }
+
+    /**
      * Flat category rows keyed by uid, ordered by parent and sorting.
      *
-     * An excluded category is dropped from this map, which also drops everything below it:
-     * a child whose parent is gone is attached to nothing and never reaches the tree.
+     * An excluded category is dropped from this map together with everything below it, so
+     * no part of the branch can be reached by uid either, e.g. as an entry point. Branches are
+     * resolved on the whole hierarchy, so a hidden or scheduled category in between does not
+     * cut a visible descendant off its excluded ancestor.
      *
      * @param int[] $excluded
      * @return array<int, array<string, mixed>>
@@ -224,10 +264,71 @@ class CategoryTreeRepository
             return $this->categoryCache[$cacheKey];
         }
 
-        $queryBuilder = $this->connectionPool->getQueryBuilderForTable(self::TABLE);
-        if ($includeHidden) {
-            $queryBuilder->getRestrictions()->removeByType(HiddenRestriction::class);
+        $categories = $this->fetchAllCategories();
+        if ($excluded !== []) {
+            $categories = array_diff_key($categories, array_flip($this->collectExcludedBranches($excluded)));
         }
+        $hiddenField = (string)($GLOBALS['TCA'][self::TABLE]['ctrl']['enablecolumns']['disabled'] ?? '');
+        if (!$includeHidden && $hiddenField !== '') {
+            $categories = array_filter(
+                $categories,
+                static fn (array $category): bool => !(bool)($category[$hiddenField] ?? false)
+            );
+        }
+
+        $this->categoryCache[$cacheKey] = $categories;
+
+        return $categories;
+    }
+
+    /**
+     * Parent uid of every category of the default language that is not deleted, regardless of
+     * visibility or schedule.
+     *
+     * @return array<int, int>
+     */
+    private function fetchParentMap(): array
+    {
+        if ($this->parentMap !== null) {
+            return $this->parentMap;
+        }
+
+        $queryBuilder = $this->connectionPool->getQueryBuilderForTable(self::TABLE);
+        $queryBuilder->getRestrictions()->removeAll()->add(new DeletedRestriction());
+
+        $rows = $queryBuilder
+            ->select('uid', 'parent')
+            ->from(self::TABLE)
+            ->where(
+                $queryBuilder->expr()->eq(
+                    'sys_language_uid',
+                    $queryBuilder->createNamedParameter(0, Connection::PARAM_INT)
+                )
+            )
+            ->executeQuery()
+            ->fetchAllAssociative();
+
+        $parents = [];
+        foreach ($rows as $row) {
+            $parents[(int)$row['uid']] = (int)$row['parent'];
+        }
+
+        return $this->parentMap = $parents;
+    }
+
+    /**
+     * Every category row of the default language, hidden ones included, keyed by uid.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function fetchAllCategories(): array
+    {
+        if ($this->allCategories !== null) {
+            return $this->allCategories;
+        }
+
+        $queryBuilder = $this->connectionPool->getQueryBuilderForTable(self::TABLE);
+        $queryBuilder->getRestrictions()->removeByType(HiddenRestriction::class);
 
         $rows = $queryBuilder
             ->select('*')
@@ -245,14 +346,9 @@ class CategoryTreeRepository
 
         $categories = [];
         foreach ($rows as $row) {
-            if (in_array((int)$row['uid'], $excluded, true)) {
-                continue;
-            }
             $categories[(int)$row['uid']] = $row;
         }
 
-        $this->categoryCache[$cacheKey] = $categories;
-
-        return $categories;
+        return $this->allCategories = $categories;
     }
 }

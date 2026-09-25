@@ -1,0 +1,4 @@
+"sys_category",,,,,,,,
+,"uid","pid","parent","sorting","title","hidden","deleted","sys_language_uid"
+,9,1,5,512,"Roots",1,0,0
+,10,1,9,256,"Beetroot",0,0,0

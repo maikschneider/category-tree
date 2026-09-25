@@ -25,9 +25,9 @@ the tree, together with everything below them.
 excludeCategories = 51
 ```
 
-An excluded category is dropped before the hierarchy is built, so its children are attached
-to nothing and the whole branch disappears — from the tree, from a search and from the
-rootline. The records themselves are untouched, and a module can exclude a different set,
+An excluded category is dropped before the hierarchy is built, together with everything
+below it, so the whole branch disappears — from the tree, from a search and from the
+rootline. A category inside an excluded branch cannot serve as an entry point either. The records themselves are untouched, and a module can exclude a different set,
 see [ModuleSettings.md](ModuleSettings.md).
 
 With `showRootNode = 1` (the default) a synthetic node is rendered above the entry points.
