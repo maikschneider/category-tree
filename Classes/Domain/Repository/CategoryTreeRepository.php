@@ -6,6 +6,7 @@ namespace MaikSchneider\CategoryTree\Domain\Repository;
 
 use TYPO3\CMS\Core\Database\Connection;
 use TYPO3\CMS\Core\Database\ConnectionPool;
+use TYPO3\CMS\Core\Database\Query\Restriction\DeletedRestriction;
 use TYPO3\CMS\Core\Database\Query\Restriction\HiddenRestriction;
 
 /**
@@ -30,6 +31,11 @@ class CategoryTreeRepository
      * @var array<int, array<string, mixed>>|null
      */
     private ?array $allCategories = null;
+
+    /**
+     * @var array<int, int>|null
+     */
+    private ?array $parentMap = null;
 
     public function __construct(private readonly ConnectionPool $connectionPool)
     {
@@ -216,20 +222,20 @@ class CategoryTreeRepository
     /**
      * UIDs of the excluded categories and of everything below them.
      *
-     * @param array<int, array<string, mixed>> $categories
      * @param int[] $excluded
      * @return int[]
      */
-    private function collectExcludedBranches(array $categories, array $excluded): array
+    private function collectExcludedBranches(array $excluded): array
     {
+        $parents = $this->fetchParentMap();
         $isExcluded = array_fill_keys($excluded, true);
-        foreach (array_keys($categories) as $uid) {
+        foreach (array_keys($parents) as $uid) {
             $chain = [];
             $current = $uid;
             // Stops at a known answer, the top level, or a cyclic parent reference.
-            while ($current > 0 && isset($categories[$current]) && !isset($isExcluded[$current]) && !isset($chain[$current])) {
+            while ($current > 0 && isset($parents[$current]) && !isset($isExcluded[$current]) && !isset($chain[$current])) {
                 $chain[$current] = true;
-                $current = (int)$categories[$current]['parent'];
+                $current = $parents[$current];
             }
             $verdict = $isExcluded[$current] ?? false;
             foreach (array_keys($chain) as $member) {
@@ -245,7 +251,7 @@ class CategoryTreeRepository
      *
      * An excluded category is dropped from this map together with everything below it, so
      * no part of the branch can be reached by uid either, e.g. as an entry point. Branches are
-     * resolved before hidden categories are filtered, so a hidden category in between does not
+     * resolved on the whole hierarchy, so a hidden or scheduled category in between does not
      * cut a visible descendant off its excluded ancestor.
      *
      * @param int[] $excluded
@@ -260,7 +266,7 @@ class CategoryTreeRepository
 
         $categories = $this->fetchAllCategories();
         if ($excluded !== []) {
-            $categories = array_diff_key($categories, array_flip($this->collectExcludedBranches($categories, $excluded)));
+            $categories = array_diff_key($categories, array_flip($this->collectExcludedBranches($excluded)));
         }
         $hiddenField = (string)($GLOBALS['TCA'][self::TABLE]['ctrl']['enablecolumns']['disabled'] ?? '');
         if (!$includeHidden && $hiddenField !== '') {
@@ -273,6 +279,41 @@ class CategoryTreeRepository
         $this->categoryCache[$cacheKey] = $categories;
 
         return $categories;
+    }
+
+    /**
+     * Parent uid of every category of the default language that is not deleted, regardless of
+     * visibility or schedule.
+     *
+     * @return array<int, int>
+     */
+    private function fetchParentMap(): array
+    {
+        if ($this->parentMap !== null) {
+            return $this->parentMap;
+        }
+
+        $queryBuilder = $this->connectionPool->getQueryBuilderForTable(self::TABLE);
+        $queryBuilder->getRestrictions()->removeAll()->add(new DeletedRestriction());
+
+        $rows = $queryBuilder
+            ->select('uid', 'parent')
+            ->from(self::TABLE)
+            ->where(
+                $queryBuilder->expr()->eq(
+                    'sys_language_uid',
+                    $queryBuilder->createNamedParameter(0, Connection::PARAM_INT)
+                )
+            )
+            ->executeQuery()
+            ->fetchAllAssociative();
+
+        $parents = [];
+        foreach ($rows as $row) {
+            $parents[(int)$row['uid']] = (int)$row['parent'];
+        }
+
+        return $this->parentMap = $parents;
     }
 
     /**
