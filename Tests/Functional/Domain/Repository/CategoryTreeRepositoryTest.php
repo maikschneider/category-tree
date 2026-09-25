@@ -60,6 +60,16 @@ final class CategoryTreeRepositoryTest extends FunctionalTestCase
     }
 
     #[Test]
+    public function aHiddenCategoryDoesNotCutAVisibleDescendantOffItsExcludedBranch(): void
+    {
+        $this->importCSVDataSet(__DIR__ . '/../../Fixtures/sys_category_hidden_branch.csv');
+
+        self::assertNotNull($this->subject->findByUid(10, false));
+        self::assertSame([], $this->subject->findTree([10], false, [5]));
+        self::assertNull($this->subject->findByUid(10, false, [5]));
+    }
+
+    #[Test]
     public function findChildrenLeavesOutExcludedCategories(): void
     {
         $children = $this->subject->findChildren(1, true, [3]);

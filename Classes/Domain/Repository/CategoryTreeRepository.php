@@ -26,6 +26,11 @@ class CategoryTreeRepository
      */
     private array $categoryCache = [];
 
+    /**
+     * @var array<int, array<string, mixed>>|null
+     */
+    private ?array $allCategories = null;
+
     public function __construct(private readonly ConnectionPool $connectionPool)
     {
     }
@@ -239,7 +244,9 @@ class CategoryTreeRepository
      * Flat category rows keyed by uid, ordered by parent and sorting.
      *
      * An excluded category is dropped from this map together with everything below it, so
-     * no part of the branch can be reached by uid either, e.g. as an entry point.
+     * no part of the branch can be reached by uid either, e.g. as an entry point. Branches are
+     * resolved before hidden categories are filtered, so a hidden category in between does not
+     * cut a visible descendant off its excluded ancestor.
      *
      * @param int[] $excluded
      * @return array<int, array<string, mixed>>
@@ -251,10 +258,36 @@ class CategoryTreeRepository
             return $this->categoryCache[$cacheKey];
         }
 
-        $queryBuilder = $this->connectionPool->getQueryBuilderForTable(self::TABLE);
-        if ($includeHidden) {
-            $queryBuilder->getRestrictions()->removeByType(HiddenRestriction::class);
+        $categories = $this->fetchAllCategories();
+        if ($excluded !== []) {
+            $categories = array_diff_key($categories, array_flip($this->collectExcludedBranches($categories, $excluded)));
         }
+        $hiddenField = (string)($GLOBALS['TCA'][self::TABLE]['ctrl']['enablecolumns']['disabled'] ?? '');
+        if (!$includeHidden && $hiddenField !== '') {
+            $categories = array_filter(
+                $categories,
+                static fn (array $category): bool => !(bool)($category[$hiddenField] ?? false)
+            );
+        }
+
+        $this->categoryCache[$cacheKey] = $categories;
+
+        return $categories;
+    }
+
+    /**
+     * Every category row of the default language, hidden ones included, keyed by uid.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function fetchAllCategories(): array
+    {
+        if ($this->allCategories !== null) {
+            return $this->allCategories;
+        }
+
+        $queryBuilder = $this->connectionPool->getQueryBuilderForTable(self::TABLE);
+        $queryBuilder->getRestrictions()->removeByType(HiddenRestriction::class);
 
         $rows = $queryBuilder
             ->select('*')
@@ -274,12 +307,7 @@ class CategoryTreeRepository
         foreach ($rows as $row) {
             $categories[(int)$row['uid']] = $row;
         }
-        if ($excluded !== []) {
-            $categories = array_diff_key($categories, array_flip($this->collectExcludedBranches($categories, $excluded)));
-        }
 
-        $this->categoryCache[$cacheKey] = $categories;
-
-        return $categories;
+        return $this->allCategories = $categories;
     }
 }
